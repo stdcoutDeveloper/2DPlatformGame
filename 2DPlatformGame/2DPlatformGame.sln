@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.1022
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "2DPlatformGame", "2DPlatformGame\2DPlatformGame.vcxproj", "{5E58B6F3-F22C-409A-AD65-E6B76F509706}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5E58B6F3-F22C-409A-AD65-E6B76F509706}.Debug|x86.ActiveCfg = Debug|Win32
+		{5E58B6F3-F22C-409A-AD65-E6B76F509706}.Debug|x86.Build.0 = Debug|Win32
+		{5E58B6F3-F22C-409A-AD65-E6B76F509706}.Release|x86.ActiveCfg = Release|Win32
+		{5E58B6F3-F22C-409A-AD65-E6B76F509706}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {48BDFB07-FDF6-4A99-A2CD-2C5C645A7327}
+	EndGlobalSection
+EndGlobal
