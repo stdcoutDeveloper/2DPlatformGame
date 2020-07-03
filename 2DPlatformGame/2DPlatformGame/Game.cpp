@@ -1,51 +1,60 @@
 #include "Game.h"
 
-Game::Game() : m_window("Chapter 6", sf::Vector2u(800, 600)),
-               m_entityManager(&m_context, 100), m_stateManager(&m_context)
+Game::Game() : window_("Chapter 7", sf::Vector2u(800, 600)),
+               entity_mgr_(&context_, 100), state_mgr_(&context_)
 {
-    m_clock.restart();
-    srand(time(nullptr));
+    clock_.restart();
+    srand(static_cast<unsigned int>(time(nullptr)));
 
-    m_context.m_wind = &m_window;
-    m_context.m_eventManager = m_window.GetEventManager();
-    m_context.m_textureManager = &m_textureManager;
-    m_context.m_entityManager = &m_entityManager;
+    context_.wind_ = &window_;
+    context_.event_mgr_ = window_.GetEventManager();
+    context_.texture_mgr_ = &texture_mgr_;
+    context_.entity_mgr_ = &entity_mgr_;
 
-    m_stateManager.SwitchTo(StateType::Intro);
+    state_mgr_.SwitchTo(StateType::Intro);
 }
 
-Game::~Game()
+Game::~Game() = default;
+
+sf::Time Game::GetElapsed() const
 {
+    return clock_.getElapsedTime();
 }
 
-sf::Time Game::GetElapsed() { return m_clock.getElapsedTime(); }
-void Game::RestartClock() { m_elapsed = m_clock.restart(); }
-Window* Game::GetWindow() { return &m_window; }
+void Game::RestartClock()
+{
+    elapsed_time_ = clock_.restart();
+}
+
+Window* Game::GetWindow()
+{
+    return &window_;
+}
 
 void Game::Update()
 {
-    m_window.Update();
-    m_stateManager.Update(m_elapsed);
+    window_.Update();
+    state_mgr_.Update(elapsed_time_);
 }
 
 void Game::Render()
 {
-    m_window.BeginDraw();
+    window_.BeginDraw();
     // Render here.
-    m_stateManager.Draw();
+    state_mgr_.Draw();
 
     // Debug.
-    if (m_context.m_debugOverlay.Debug())
+    if (context_.debug_overlay_.Debug())
     {
-        m_context.m_debugOverlay.Draw(m_window.GetRenderWindow());
+        context_.debug_overlay_.Draw(window_.GetRenderWindow());
     }
     // End debug.
 
-    m_window.EndDraw();
+    window_.EndDraw();
 }
 
 void Game::LateUpdate()
 {
-    m_stateManager.ProcessRequests();
+    state_mgr_.ProcessRequests();
     RestartClock();
 }

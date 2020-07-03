@@ -10,18 +10,21 @@ Window::Window(const std::string& title, const sf::Vector2u& size)
     Setup(title, size);
 }
 
-Window::~Window() { m_window.close(); }
+Window::~Window()
+{
+    window_.close();
+}
 
 void Window::Setup(const std::string& title, const sf::Vector2u& size)
 {
-    m_windowTitle = title;
-    m_windowSize = size;
-    m_isFullscreen = false;
-    m_isDone = false;
-    m_isFocused = true;
+    window_title_ = title;
+    window_size_ = size;
+    is_fullscreen_ = false;
+    is_done_ = false;
+    is_focused_ = true;
 
-    m_eventManager.AddCallback(StateType(0), "Fullscreen_toggle", &Window::ToggleFullscreen, this);
-    m_eventManager.AddCallback(StateType(0), "Window_close", &Window::Close, this);
+    event_mgr_.AddCallback(StateType(0), "Fullscreen_toggle", &Window::ToggleFullscreen, this);
+    event_mgr_.AddCallback(StateType(0), "Window_close", &Window::Close, this);
 
     Create();
 }
@@ -29,58 +32,90 @@ void Window::Setup(const std::string& title, const sf::Vector2u& size)
 void Window::Create()
 {
     sf::Uint32 style = sf::Style::Default;
-    if (m_isFullscreen) { style = sf::Style::Fullscreen; }
+    if (is_fullscreen_) { style = sf::Style::Fullscreen; }
 
-    m_window.create(sf::VideoMode(m_windowSize.x, m_windowSize.y, 32), m_windowTitle, style);
+    window_.create(sf::VideoMode(window_size_.x, window_size_.y, 32), window_title_, style);
 }
 
-void Window::BeginDraw() { m_window.clear(sf::Color::Black); }
-void Window::EndDraw() { m_window.display(); }
-
-bool Window::IsDone() { return m_isDone; }
-bool Window::IsFullscreen() { return m_isFullscreen; }
-bool Window::IsFocused() { return m_isFocused; }
-
-sf::RenderWindow* Window::GetRenderWindow() { return &m_window; }
-EventManager* Window::GetEventManager() { return &m_eventManager; }
-sf::Vector2u Window::GetWindowSize() { return m_windowSize; }
-
-sf::FloatRect Window::GetViewSpace()
+void Window::BeginDraw()
 {
-    sf::Vector2f viewCenter(m_window.getView().getCenter());
-    sf::Vector2f viewSize(m_window.getView().getSize());
-    sf::Vector2f viewSizeHalf(viewSize.x / 2, viewSize.y / 2);
-    sf::FloatRect viewSpace(viewCenter - viewSizeHalf, viewSize);
+    window_.clear(sf::Color::Black);
+}
+
+void Window::EndDraw()
+{
+    window_.display();
+}
+
+bool Window::IsDone() const
+{
+    return is_done_;
+}
+
+bool Window::IsFullscreen() const
+{
+    return is_fullscreen_;
+}
+
+bool Window::IsFocused() const
+{
+    return is_focused_;
+}
+
+sf::RenderWindow* Window::GetRenderWindow()
+{
+    return &window_;
+}
+
+EventManager* Window::GetEventManager()
+{
+    return &event_mgr_;
+}
+
+sf::Vector2u Window::GetWindowSize() const
+{
+    return window_size_;
+}
+
+sf::FloatRect Window::GetViewSpace() const
+{
+    const sf::Vector2f viewCenter(window_.getView().getCenter());
+    const sf::Vector2f viewSize(window_.getView().getSize());
+    const sf::Vector2f viewSizeHalf(viewSize.x / 2, viewSize.y / 2);
+    const sf::FloatRect viewSpace(viewCenter - viewSizeHalf, viewSize);
     return viewSpace;
 }
 
-void Window::ToggleFullscreen(EventDetails* l_details)
+void Window::ToggleFullscreen(EventDetails* details)
 {
-    m_isFullscreen = !m_isFullscreen;
-    m_window.close();
+    is_fullscreen_ = !is_fullscreen_;
+    window_.close();
     Create();
 }
 
-void Window::Close(EventDetails* l_details) { m_isDone = true; }
+void Window::Close(EventDetails* details)
+{
+    is_done_ = true;
+}
 
 void Window::Update()
 {
     sf::Event event;
 
-    while (m_window.pollEvent(event))
+    while (window_.pollEvent(event))
     {
         if (event.type == sf::Event::LostFocus)
         {
-            m_isFocused = false;
-            m_eventManager.SetFocus(false);
+            is_focused_ = false;
+            event_mgr_.SetFocus(false);
         }
         else if (event.type == sf::Event::GainedFocus)
         {
-            m_isFocused = true;
-            m_eventManager.SetFocus(true);
+            is_focused_ = true;
+            event_mgr_.SetFocus(true);
         }
-        m_eventManager.HandleEvent(event);
+        event_mgr_.HandleEvent(event);
     }
 
-    m_eventManager.Update();
+    event_mgr_.Update();
 }

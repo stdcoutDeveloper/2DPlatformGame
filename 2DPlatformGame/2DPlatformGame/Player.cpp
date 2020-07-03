@@ -2,13 +2,13 @@
 #include "EntityManager.h"
 #include "StateManager.h"
 
-Player::Player(EntityManager* l_entityMgr)
-    : Character(l_entityMgr)
+Player::Player(EntityManager* entityMgr)
+    : Character(entityMgr)
 {
     Load("Player.char");
-    m_type = EntityType::Player;
+    type_ = EntityType::Player;
 
-    EventManager* events = m_entityManager->GetContext()->m_eventManager;
+    EventManager* events = entity_mgr_->GetContext()->event_mgr_;
     events->AddCallback<Player>(StateType::Game, "Player_MoveLeft", &Player::React, this);
     events->AddCallback<Player>(StateType::Game, "Player_MoveRight", &Player::React, this);
     events->AddCallback<Player>(StateType::Game, "Player_Jump", &Player::React, this);
@@ -17,48 +17,48 @@ Player::Player(EntityManager* l_entityMgr)
 
 Player::~Player()
 {
-    EventManager* events = m_entityManager->GetContext()->m_eventManager;
+    EventManager* events = entity_mgr_->GetContext()->event_mgr_;
     events->RemoveCallback(StateType::Game, "Player_MoveLeft");
     events->RemoveCallback(StateType::Game, "Player_MoveRight");
     events->RemoveCallback(StateType::Game, "Player_Jump");
     events->RemoveCallback(StateType::Game, "Player_Attack");
 }
 
-void Player::React(EventDetails* l_details)
+void Player::React(EventDetails* details)
 {
-    if (l_details->m_name == "Player_MoveLeft")
+    if (details->name_ == "Player_MoveLeft")
     {
         Move(Direction::Left);
     }
-    else if (l_details->m_name == "Player_MoveRight")
+    else if (details->name_ == "Player_MoveRight")
     {
         Move(Direction::Right);
     }
-    else if (l_details->m_name == "Player_Jump")
+    else if (details->name_ == "Player_Jump")
     {
         Jump();
     }
-    else if (l_details->m_name == "Player_Attack")
+    else if (details->name_ == "Player_Attack")
     {
         Attack();
     }
 }
 
-void Player::OnEntityCollision(EntityBase* l_collider, bool l_attack)
+void Player::OnEntityCollision(EntityBase* collider, bool isAttack)
 {
-    if (m_state == EntityState::Dying) { return; }
-    if (l_attack)
+    if (state_ == EntityState::Dying) { return; }
+    if (isAttack)
     {
-        if (m_state != EntityState::Attacking) { return; }
-        if (!m_spriteSheet.GetCurrentAnim()->IsInAction()) { return; }
-        if (l_collider->GetType() != EntityType::Enemy &&
-            l_collider->GetType() != EntityType::Player)
+        if (state_ != EntityState::Attacking) { return; }
+        if (!sprite_sheet_.GetCurrentAnim()->IsInAction()) { return; }
+        if (collider->GetType() != EntityType::Enemy &&
+            collider->GetType() != EntityType::Player)
         {
             return;
         }
-        Character* opponent = static_cast<Character*>(l_collider);
+        auto opponent = dynamic_cast<Character*>(collider);
         opponent->GetHurt(1);
-        if (m_position.x > opponent->GetPosition().x)
+        if (position_.x > opponent->GetPosition().x)
         {
             opponent->AddVelocity(-32, 0);
         }

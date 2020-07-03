@@ -1,35 +1,40 @@
 #pragma once
+
 #include "EntityBase.h"
 #include "SpriteSheet.h"
 
 class Character : public EntityBase
 {
+private:
     friend class EntityManager;
+
 public:
-    Character(EntityManager* l_entityMgr);
+    Character(EntityManager* entityMgr);
     virtual ~Character();
 
-    void Move(const Direction& l_dir);
+    void Move(const Direction& dir);
 
     void Jump();
     void Attack();
-    void GetHurt(const int& l_damage);
+    void GetHurt(const int& damage);
 
-    void Load(const std::string& l_path);
+    void Load(const std::string& path);
 
     void OnEntityCollision(
-        EntityBase* l_collider, bool l_attack) override = 0;
+        EntityBase* collider, bool attack) override = 0;
 
-    void Update(float l_dT) override;
-    void Draw(sf::RenderWindow* l_wind) override;
+    void Update(float deltaTime) override;
+    void Draw(sf::RenderWindow* wind) override;
+
 protected:
-    void UpdateAttackAABB();
+    SpriteSheet sprite_sheet_;
+    float jump_velocity_;
+
+    int hit_points_;
+
+    sf::FloatRect attack_box_;
+    sf::Vector2f attack_box_offset_;
+
+    void UpdateAttackBox();
     void Animate();
-    SpriteSheet m_spriteSheet;
-    float m_jumpVelocity;
-
-    int m_hitpoints;
-
-    sf::FloatRect m_attackAABB;
-    sf::Vector2f m_attackAABBoffset;
 };

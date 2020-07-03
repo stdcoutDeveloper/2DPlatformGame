@@ -1,50 +1,71 @@
 #include "SpriteSheet.h"
 
-SpriteSheet::SpriteSheet(TextureManager* l_textMgr)
-    : m_spriteScale(1.f, 1.f), m_direction(Direction::Right),
-      m_animationCurrent(nullptr), m_textureManager(l_textMgr)
+SpriteSheet::SpriteSheet(TextureManager* textMgr)
+    : sprite_scale_(1.f, 1.f), direction_(Direction::Right),
+      animation_current_(nullptr), texture_mgr_(textMgr)
 {
 }
 
-SpriteSheet::~SpriteSheet() { ReleaseSheet(); }
+SpriteSheet::~SpriteSheet()
+{
+    ReleaseSheet();
+}
 
 void SpriteSheet::ReleaseSheet()
 {
-    m_textureManager->ReleaseResource(m_texture);
-    m_animationCurrent = nullptr;
-    while (m_animations.begin() != m_animations.end())
+    texture_mgr_->ReleaseResource(texture_);
+    animation_current_ = nullptr;
+    while (animations_.begin() != animations_.end())
     {
-        delete m_animations.begin()->second;
-        m_animations.erase(m_animations.begin());
+        delete animations_.begin()->second;
+        animations_.erase(animations_.begin());
     }
 }
 
-sf::Vector2i SpriteSheet::GetSpriteSize() const { return m_spriteSize; }
-sf::Vector2f SpriteSheet::GetSpritePosition() const { return m_sprite.getPosition(); }
-Direction SpriteSheet::GetDirection() const { return m_direction; }
-Anim_Base* SpriteSheet::GetCurrentAnim() { return m_animationCurrent; }
-
-void SpriteSheet::SetSpriteSize(const sf::Vector2i& l_size)
+sf::Vector2i SpriteSheet::GetSpriteSize() const
 {
-    m_spriteSize = l_size;
-    m_sprite.setOrigin(m_spriteSize.x / 2, m_spriteSize.y);
+    return sprite_size_;
 }
 
-void SpriteSheet::SetSpritePosition(const sf::Vector2f& l_pos) { m_sprite.setPosition(l_pos); }
-
-void SpriteSheet::SetDirection(const Direction& l_dir)
+sf::Vector2f SpriteSheet::GetSpritePosition() const
 {
-    if (l_dir == m_direction) { return; }
-    m_direction = l_dir;
-    m_animationCurrent->CropSprite();
+    return sprite_.getPosition();
 }
 
-void SpriteSheet::CropSprite(const sf::IntRect& l_rect) { m_sprite.setTextureRect(l_rect); }
+Direction SpriteSheet::GetDirection() const
+{
+    return direction_;
+}
 
-bool SpriteSheet::LoadSheet(const std::string& l_file)
+Anim_Base* SpriteSheet::GetCurrentAnim() const
+{
+    return animation_current_;
+}
+
+void SpriteSheet::SetSpriteSize(const sf::Vector2i& size)
+{
+    sprite_size_ = size;
+    sprite_.setOrigin(sprite_size_.x / 2.0f, sprite_size_.y * 1.0f);
+}
+
+void SpriteSheet::SetSpritePosition(const sf::Vector2f& pos) { sprite_.setPosition(pos); }
+
+void SpriteSheet::SetDirection(const Direction& dir)
+{
+    if (dir == direction_) { return; }
+    direction_ = dir;
+    animation_current_->CropSprite();
+}
+
+void SpriteSheet::CropSprite(const sf::IntRect& rect)
+{
+    sprite_.setTextureRect(rect);
+}
+
+bool SpriteSheet::LoadSheet(const std::string& file)
 {
     std::ifstream sheet;
-    sheet.open(Utils::GetWorkingDirectory() + l_file);
+    sheet.open(Utils::GetWorkingDirectory() + file);
     if (sheet.is_open())
     {
         ReleaseSheet(); // Release current sheet resources.
@@ -57,52 +78,52 @@ bool SpriteSheet::LoadSheet(const std::string& l_file)
             keystream >> type;
             if (type == "Texture")
             {
-                if (m_texture != "")
+                if (!texture_.empty())
                 {
-                    std::cerr << "! Duplicate texture entries in: " << l_file << std::endl;
+                    std::cerr << "! Duplicate texture entries in: " << file << std::endl;
                     continue;
                 }
                 std::string texture;
                 keystream >> texture;
-                if (!m_textureManager->RequireResource(texture))
+                if (!texture_mgr_->RequireResource(texture))
                 {
                     std::cerr << "! Could not set up the texture: " << texture << std::endl;
                     continue;
                 }
-                m_texture = texture;
-                m_sprite.setTexture(*m_textureManager->GetResource(m_texture));
+                texture_ = texture;
+                sprite_.setTexture(*texture_mgr_->GetResource(texture_));
             }
             else if (type == "Size")
             {
-                keystream >> m_spriteSize.x >> m_spriteSize.y;
-                SetSpriteSize(m_spriteSize);
+                keystream >> sprite_size_.x >> sprite_size_.y;
+                SetSpriteSize(sprite_size_);
             }
             else if (type == "Scale")
             {
-                keystream >> m_spriteScale.x >> m_spriteScale.y;
-                m_sprite.setScale(m_spriteScale);
+                keystream >> sprite_scale_.x >> sprite_scale_.y;
+                sprite_.setScale(sprite_scale_);
             }
             else if (type == "AnimationType")
             {
-                keystream >> m_animType;
+                keystream >> anim_type_;
             }
             else if (type == "Animation")
             {
                 std::string name;
                 keystream >> name;
-                if (m_animations.find(name) != m_animations.end())
+                if (animations_.find(name) != animations_.end())
                 {
-                    std::cerr << "! Duplicate animation(" << name << ") in: " << l_file << std::endl;
+                    std::cerr << "! Duplicate animation(" << name << ") in: " << file << std::endl;
                     continue;
                 }
                 Anim_Base* anim = nullptr;
-                if (m_animType == "Directional")
+                if (anim_type_ == "Directional")
                 {
                     anim = new Anim_Directional();
                 }
                 else
                 {
-                    std::cerr << "! Unknown animation type: " << m_animType << std::endl;
+                    std::cerr << "! Unknown animation type: " << anim_type_ << std::endl;
                     continue;
                 }
 
@@ -110,37 +131,40 @@ bool SpriteSheet::LoadSheet(const std::string& l_file)
                 anim->SetSpriteSheet(this);
                 anim->SetName(name);
                 anim->Reset();
-                m_animations.emplace(name, anim);
+                animations_.emplace(name, anim);
 
-                if (m_animationCurrent) { continue; }
-                m_animationCurrent = anim;
-                m_animationCurrent->Play();
+                if (animation_current_) { continue; }
+                animation_current_ = anim;
+                animation_current_->Play();
             }
         }
         sheet.close();
         return true;
     }
-    std::cerr << "! Failed loading spritesheet: " << l_file << std::endl;
+    std::cerr << "! Failed loading spritesheet: " << file << std::endl;
     return false;
 }
 
-bool SpriteSheet::SetAnimation(const std::string& l_name,
-                               const bool& l_play, const bool& l_loop)
+bool SpriteSheet::SetAnimation(const std::string& name,
+                               const bool& isPlay, const bool& isLoop)
 {
-    auto itr = m_animations.find(l_name);
-    if (itr == m_animations.end()) { return false; }
-    if (itr->second == m_animationCurrent) { return false; }
-    if (m_animationCurrent) { m_animationCurrent->Stop(); }
-    m_animationCurrent = itr->second;
-    m_animationCurrent->SetLooping(l_loop);
-    if (l_play) { m_animationCurrent->Play(); }
-    m_animationCurrent->CropSprite();
+    const auto itr = animations_.find(name);
+    if (itr == animations_.end()) { return false; }
+    if (itr->second == animation_current_) { return false; }
+    if (animation_current_) { animation_current_->Stop(); }
+    animation_current_ = itr->second;
+    animation_current_->SetLooping(isLoop);
+    if (isPlay) { animation_current_->Play(); }
+    animation_current_->CropSprite();
     return true;
 }
 
-void SpriteSheet::Update(const float& l_dT)
+void SpriteSheet::Update(const float& deltaTime) const
 {
-    m_animationCurrent->Update(l_dT);
+    animation_current_->Update(deltaTime);
 }
 
-void SpriteSheet::Draw(sf::RenderWindow* l_wnd) { l_wnd->draw(m_sprite); }
+void SpriteSheet::Draw(sf::RenderWindow* wnd) const
+{
+    wnd->draw(sprite_);
+}

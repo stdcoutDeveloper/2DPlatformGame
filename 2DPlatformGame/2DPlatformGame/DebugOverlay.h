@@ -1,4 +1,5 @@
 #pragma once
+
 #include <vector>
 #include <SFML/Graphics.hpp>
 
@@ -7,27 +8,35 @@ class DebugOverlay
 public:
     DebugOverlay()
     {
-        m_debug = false;
+        is_debug_ = false;
     }
 
-    void Add(sf::Drawable* l_drawable)
+    void Add(sf::Drawable* drawable)
     {
-        m_drawables.push_back(l_drawable);
+        drawables_.push_back(drawable);
     }
 
-    void Draw(sf::RenderWindow* l_wind)
+    void Draw(sf::RenderWindow* wind)
     {
-        while (m_drawables.begin() != m_drawables.end())
+        while (drawables_.begin() != drawables_.end())
         {
-            l_wind->draw(*m_drawables.back());
-            delete m_drawables.back();
-            m_drawables.pop_back();
+            wind->draw(*drawables_.back());
+            delete drawables_.back();
+            drawables_.pop_back();
         }
     }
 
-    bool Debug() { return m_debug; }
-    void SetDebug(const bool& l_val) { m_debug = l_val; }
+    bool Debug() const
+    {
+        return is_debug_;
+    }
+
+    void SetDebug(const bool& val)
+    {
+        is_debug_ = val;
+    }
+
 private:
-    std::vector<sf::Drawable*> m_drawables;
-    bool m_debug;
+    std::vector<sf::Drawable*> drawables_;
+    bool is_debug_;
 };

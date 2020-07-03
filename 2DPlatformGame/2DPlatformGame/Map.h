@@ -1,4 +1,5 @@
 #pragma once
+
 #include <SFML/Graphics.hpp>
 #include <unordered_map>
 #include <map>
@@ -9,53 +10,58 @@
 #include "SharedContext.h"
 #include "BaseState.h"
 
-enum Sheet { Tile_Size = 32, Sheet_Width = 256, Sheet_Height = 256 };
+enum Sheet
+{
+    Tile_Size = 32,
+    Sheet_Width = 256,
+    Sheet_Height = 256
+};
 
 using TileID = unsigned int;
 
 struct TileInfo
 {
-    TileInfo(SharedContext* l_context,
-             const std::string& l_texture = "", TileID l_id = 0)
-        : m_id(0), m_deadly(false), m_context(l_context)
+    TileInfo(SharedContext* context,
+             const std::string& texture = "", TileID id = 0)
+        : id_(0), is_deadly_(false), context_(context)
     {
-        TextureManager* tmgr = l_context->m_textureManager;
-        if (l_texture == "")
+        TextureManager* tmgr = context->texture_mgr_;
+        if (texture.empty())
         {
-            m_id = l_id;
+            id_ = id;
             return;
         }
-        if (!tmgr->RequireResource(l_texture)) { return; }
-        m_texture = l_texture;
-        m_id = l_id;
-        m_sprite.setTexture(*tmgr->GetResource(m_texture));
-        sf::IntRect tileBoundaries(m_id % (Sheet_Width / Tile_Size) * Tile_Size,
-                                   m_id / (Sheet_Height / Tile_Size) * Tile_Size,
-                                   Tile_Size, Tile_Size);
-        m_sprite.setTextureRect(tileBoundaries);
+        if (!tmgr->RequireResource(texture)) { return; }
+        texture_ = texture;
+        id_ = id;
+        sprite_.setTexture(*tmgr->GetResource(texture_));
+        const sf::IntRect tileBoundaries(id_ % (Sheet_Width / Tile_Size) * Tile_Size,
+                                         id_ / (Sheet_Height / Tile_Size) * Tile_Size,
+                                         Tile_Size, Tile_Size);
+        sprite_.setTextureRect(tileBoundaries);
     }
 
     ~TileInfo()
     {
-        if (m_texture == "") { return; }
-        m_context->m_textureManager->ReleaseResource(m_texture);
+        if (texture_.empty()) { return; }
+        context_->texture_mgr_->ReleaseResource(texture_);
     }
 
-    sf::Sprite m_sprite;
+    sf::Sprite sprite_;
 
-    TileID m_id;
-    std::string m_name;
-    sf::Vector2f m_friction;
-    bool m_deadly;
+    TileID id_;
+    std::string name_;
+    sf::Vector2f friction_;
+    bool is_deadly_;
 
-    SharedContext* m_context;
-    std::string m_texture;
+    SharedContext* context_;
+    std::string texture_;
 };
 
 struct Tile
 {
-    TileInfo* m_properties;
-    bool m_warp; // Is the tile a warp.
+    TileInfo* properties_;
+    bool is_warp_; // Is the tile a warp.
     // Other flags unique to each tile.
 };
 
@@ -65,10 +71,10 @@ using TileSet = std::unordered_map<TileID, TileInfo*>;
 class Map
 {
 public:
-    Map(SharedContext* l_context, BaseState* l_currentState);
+    Map(SharedContext* context, BaseState* currentState);
     ~Map();
 
-    Tile* GetTile(unsigned int l_x, unsigned int l_y);
+    Tile* GetTile(unsigned int x, unsigned int y);
     TileInfo* GetDefaultTile();
 
     float GetGravity() const;
@@ -76,30 +82,30 @@ public:
     const sf::Vector2u& GetMapSize() const;
     const sf::Vector2f& GetPlayerStart() const;
 
-    void LoadMap(const std::string& l_path);
+    void LoadMap(const std::string& path);
     void LoadNext();
 
-    void Update(float l_dT);
+    void Update(float deltaTime);
     void Draw();
 private:
     // Method for converting 2D coordinates to 1D ints.
-    unsigned int ConvertCoords(unsigned int l_x, unsigned int l_y);
-    void LoadTiles(const std::string& l_path);
+    unsigned int ConvertCoordinates(unsigned int x, unsigned int y) const;
+    void LoadTiles(const std::string& path);
     void PurgeMap();
     void PurgeTileSet();
 
-    TileSet m_tileSet;
-    TileMap m_tileMap;
-    sf::Sprite m_background;
-    TileInfo m_defaultTile;
-    sf::Vector2u m_maxMapSize;
-    sf::Vector2f m_playerStart;
-    unsigned int m_tileCount;
-    unsigned int m_tileSetCount;
-    float m_mapGravity;
-    std::string m_nextMap;
-    bool m_loadNextMap;
-    std::string m_backgroundTexture;
-    BaseState* m_currentState;
-    SharedContext* m_context;
+    TileSet tile_set_;
+    TileMap tile_map_;
+    sf::Sprite background_;
+    TileInfo default_tile_;
+    sf::Vector2u max_map_size_;
+    sf::Vector2f player_start_;
+    unsigned int tile_count_;
+    unsigned int tile_set_count_;
+    float map_gravity_;
+    std::string next_map_;
+    bool is_load_next_map_;
+    std::string background_texture_;
+    BaseState* current_state_;
+    SharedContext* context_;
 };

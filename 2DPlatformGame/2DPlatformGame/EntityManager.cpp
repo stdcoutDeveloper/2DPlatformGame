@@ -1,8 +1,8 @@
 #include "EntityManager.h"
 #include "SharedContext.h"
 
-EntityManager::EntityManager(SharedContext* l_context, unsigned int l_maxEntities)
-    : m_context(l_context), m_idCounter(0), m_maxEntities(l_maxEntities)
+EntityManager::EntityManager(SharedContext* context, unsigned int maxEntities)
+    : context_(context), id_counter_(0), max_entities_(maxEntities)
 {
     LoadEnemyTypes("EnemyList.list");
     RegisterEntity<Player>(EntityType::Player);
@@ -11,35 +11,35 @@ EntityManager::EntityManager(SharedContext* l_context, unsigned int l_maxEntitie
 
 EntityManager::~EntityManager() { Purge(); }
 
-int EntityManager::Add(const EntityType& l_type, const std::string& l_name)
+int EntityManager::Add(const EntityType& type, const std::string& name)
 {
-    auto itr = m_entityFactory.find(l_type);
-    if (itr == m_entityFactory.end()) { return -1; }
+    const auto itr = entity_factory_.find(type);
+    if (itr == entity_factory_.end()) { return -1; }
     EntityBase* entity = itr->second();
-    entity->m_id = m_idCounter;
-    if (l_name != "") { entity->m_name = l_name; }
+    entity->id_ = id_counter_;
+    if (!name.empty()) { entity->name_ = name; }
 
-    m_entities.emplace(m_idCounter, entity);
+    entities_.emplace(id_counter_, entity);
 
-    if (l_type == EntityType::Enemy)
+    if (type == EntityType::Enemy)
     {
-        auto itr = m_enemyTypes.find(l_name);
-        if (itr != m_enemyTypes.end())
+        auto enemyItr = enemy_types_.find(name);
+        if (enemyItr != enemy_types_.end())
         {
-            Enemy* enemy = static_cast<Enemy*>(entity);
-            enemy->Load(itr->second);
+            auto enemy = dynamic_cast<Enemy*>(entity);
+            enemy->Load(enemyItr->second);
         }
     }
 
-    ++m_idCounter;
-    return m_idCounter - 1;
+    ++id_counter_;
+    return static_cast<int>(id_counter_ - 1);
 }
 
-EntityBase* EntityManager::Find(const std::string& l_name)
+EntityBase* EntityManager::Find(const std::string& name)
 {
-    for (auto& itr : m_entities)
+    for (auto& itr : entities_)
     {
-        if (itr.second->GetName() == l_name)
+        if (itr.second->GetName() == name)
         {
             return itr.second;
         }
@@ -47,23 +47,23 @@ EntityBase* EntityManager::Find(const std::string& l_name)
     return nullptr;
 }
 
-EntityBase* EntityManager::Find(unsigned int l_id)
+EntityBase* EntityManager::Find(unsigned int id)
 {
-    auto itr = m_entities.find(l_id);
-    if (itr == m_entities.end()) { return nullptr; }
+    const auto itr = entities_.find(id);
+    if (itr == entities_.end()) { return nullptr; }
     return itr->second;
 }
 
-void EntityManager::Remove(unsigned int l_id)
+void EntityManager::Remove(unsigned int id)
 {
-    m_entitiesToRemove.emplace_back(l_id);
+    entities_to_remove_.emplace_back(id);
 }
 
-void EntityManager::Update(float l_dT)
+void EntityManager::Update(float deltaTime)
 {
-    for (auto& itr : m_entities)
+    for (auto& itr : entities_)
     {
-        itr.second->Update(l_dT);
+        itr.second->Update(deltaTime);
     }
 
     EntityCollisionCheck();
@@ -72,64 +72,64 @@ void EntityManager::Update(float l_dT)
 
 void EntityManager::Draw()
 {
-    sf::RenderWindow* wnd = m_context->m_wind->GetRenderWindow();
-    sf::FloatRect viewSpace = m_context->m_wind->GetViewSpace();
+    sf::RenderWindow* wnd = context_->wind_->GetRenderWindow();
+    const sf::FloatRect viewSpace = context_->wind_->GetViewSpace();
 
-    for (auto& itr : m_entities)
+    for (auto& itr : entities_)
     {
-        if (!viewSpace.intersects(itr.second->m_AABB)) { continue; }
+        if (!viewSpace.intersects(itr.second->bounding_box_)) { continue; }
         itr.second->Draw(wnd);
     }
 }
 
 void EntityManager::Purge()
 {
-    for (auto& itr : m_entities)
+    for (auto& itr : entities_)
     {
         delete itr.second;
     }
-    m_entities.clear();
-    m_idCounter = 0;
+    entities_.clear();
+    id_counter_ = 0;
 }
 
 void EntityManager::ProcessRemovals()
 {
-    while (m_entitiesToRemove.begin() != m_entitiesToRemove.end())
+    while (entities_to_remove_.begin() != entities_to_remove_.end())
     {
-        unsigned int id = m_entitiesToRemove.back();
-        auto itr = m_entities.find(id);
-        if (itr != m_entities.end())
+        unsigned int id = entities_to_remove_.back();
+        auto itr = entities_.find(id);
+        if (itr != entities_.end())
         {
             std::cout << "Discarding entity: " << itr->second->GetId() << std::endl;
             delete itr->second;
-            m_entities.erase(itr);
+            entities_.erase(itr);
         }
-        m_entitiesToRemove.pop_back();
+        entities_to_remove_.pop_back();
     }
 }
 
 void EntityManager::EntityCollisionCheck()
 {
-    if (m_entities.empty()) { return; }
-    for (auto itr = m_entities.begin(); std::next(itr) != m_entities.end(); ++itr)
+    if (entities_.empty()) { return; }
+    for (auto itr = entities_.begin(); std::next(itr) != entities_.end(); ++itr)
     {
-        for (auto itr2 = std::next(itr); itr2 != m_entities.end(); ++itr2)
+        for (auto itr2 = std::next(itr); itr2 != entities_.end(); ++itr2)
         {
             if (itr->first == itr2->first) { continue; }
 
             // Regular AABB bounding box collision.
-            if (itr->second->m_AABB.intersects(itr2->second->m_AABB))
+            if (itr->second->bounding_box_.intersects(itr2->second->bounding_box_))
             {
                 itr->second->OnEntityCollision(itr2->second, false);
                 itr2->second->OnEntityCollision(itr->second, false);
             }
 
-            EntityType t1 = itr->second->GetType();
-            EntityType t2 = itr2->second->GetType();
+            const EntityType t1 = itr->second->GetType();
+            const EntityType t2 = itr2->second->GetType();
             if (t1 == EntityType::Player || t1 == EntityType::Enemy)
             {
-                Character* c1 = static_cast<Character*>(itr->second);
-                if (c1->m_attackAABB.intersects(itr2->second->m_AABB))
+                auto c1 = dynamic_cast<Character*>(itr->second);
+                if (c1->attack_box_.intersects(itr2->second->bounding_box_))
                 {
                     c1->OnEntityCollision(itr2->second, true);
                 }
@@ -137,8 +137,8 @@ void EntityManager::EntityCollisionCheck()
 
             if (t2 == EntityType::Player || t2 == EntityType::Enemy)
             {
-                Character* c2 = static_cast<Character*>(itr2->second);
-                if (c2->m_attackAABB.intersects(itr->second->m_AABB))
+                auto c2 = dynamic_cast<Character*>(itr2->second);
+                if (c2->attack_box_.intersects(itr->second->bounding_box_))
                 {
                     c2->OnEntityCollision(itr->second, true);
                 }
@@ -147,13 +147,13 @@ void EntityManager::EntityCollisionCheck()
     }
 }
 
-void EntityManager::LoadEnemyTypes(const std::string& l_name)
+void EntityManager::LoadEnemyTypes(const std::string& name)
 {
     std::ifstream file;
-    file.open(Utils::GetWorkingDirectory() + std::string("media/Characters/") + l_name);
+    file.open(Utils::GetWorkingDirectory() + std::string("media/Characters/") + name);
     if (!file.is_open())
     {
-        std::cout << "! Failed loading file: " << l_name << std::endl;
+        std::cout << "! Failed loading file: " << name << std::endl;
         return;
     }
     std::string line;
@@ -164,9 +164,12 @@ void EntityManager::LoadEnemyTypes(const std::string& l_name)
         std::string name;
         std::string charFile;
         keystream >> name >> charFile;
-        m_enemyTypes.emplace(name, charFile);
+        enemy_types_.emplace(name, charFile);
     }
     file.close();
 }
 
-SharedContext* EntityManager::GetContext() { return m_context; }
+SharedContext* EntityManager::GetContext() const
+{
+    return context_;
+}

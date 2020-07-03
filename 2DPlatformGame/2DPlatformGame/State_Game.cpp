@@ -1,93 +1,92 @@
 #include "State_Game.h"
 #include "StateManager.h"
 
-State_Game::State_Game(StateManager* l_stateManager)
-    : BaseState(l_stateManager)
+State_Game::State_Game(StateManager* stateManager)
+    : BaseState(stateManager)
 {
 }
 
-State_Game::~State_Game()
-{
-}
+State_Game::~State_Game() = default;
 
 void State_Game::OnCreate()
 {
-    EventManager* evMgr = m_stateMgr->
-                          GetContext()->m_eventManager;
+    EventManager* evMgr = state_mgr_->
+                          GetContext()->event_mgr_;
 
     evMgr->AddCallback(StateType::Game, "Key_Escape", &State_Game::MainMenu, this);
     evMgr->AddCallback(StateType::Game, "Key_P", &State_Game::Pause, this);
     evMgr->AddCallback(StateType::Game, "Key_O", &State_Game::ToggleOverlay, this);
 
-    sf::Vector2u size = m_stateMgr->GetContext()->m_wind->GetWindowSize();
-    m_view.setSize(size.x, size.y);
-    m_view.setCenter(size.x / 2, size.y / 2);
-    m_view.zoom(0.6f);
-    m_stateMgr->GetContext()->m_wind->GetRenderWindow()->setView(m_view);
+    const sf::Vector2u size = state_mgr_->GetContext()->wind_->GetWindowSize();
+    view_.setSize(size.x * 1.0f, size.y * 1.0f);
+    view_.setCenter(size.x / 2.0f, size.y / 2.0f);
+    view_.zoom(0.6f);
+    state_mgr_->GetContext()->wind_->GetRenderWindow()->setView(view_);
 
-    m_gameMap = new Map(m_stateMgr->GetContext(), this);
-    m_gameMap->LoadMap("media/Maps/map1.map");
+    game_map_ = new Map(state_mgr_->GetContext(), this);
+    game_map_->LoadMap("media/Maps/map1.map");
 }
 
 void State_Game::OnDestroy()
 {
-    EventManager* evMgr = m_stateMgr->
-                          GetContext()->m_eventManager;
+    EventManager* evMgr = state_mgr_->
+                          GetContext()->event_mgr_;
     evMgr->RemoveCallback(StateType::Game, "Key_Escape");
     evMgr->RemoveCallback(StateType::Game, "Key_P");
     evMgr->RemoveCallback(StateType::Game, "Key_O");
 
-    delete m_gameMap;
-    m_gameMap = nullptr;
+    delete game_map_;
+    game_map_ = nullptr;
 }
 
-void State_Game::Update(const sf::Time& l_time)
+void State_Game::Update(const sf::Time& time)
 {
-    SharedContext* context = m_stateMgr->GetContext();
-    EntityBase* player = context->m_entityManager->Find("Player");
+    SharedContext* context = state_mgr_->GetContext();
+    EntityBase* player = context->entity_mgr_->Find("Player");
     if (!player)
     {
         std::cout << "Respawning player..." << std::endl;
-        context->m_entityManager->Add(EntityType::Player, "Player");
-        player = context->m_entityManager->Find("Player");
-        player->SetPosition(m_gameMap->GetPlayerStart());
+        context->entity_mgr_->Add(EntityType::Player, "Player");
+        player = context->entity_mgr_->Find("Player");
+        player->SetPosition(game_map_->GetPlayerStart());
     }
     else
     {
-        m_view.setCenter(player->GetPosition());
-        context->m_wind->GetRenderWindow()->setView(m_view);
+        view_.setCenter(player->GetPosition());
+        context->wind_->GetRenderWindow()->setView(view_);
     }
 
-    sf::FloatRect viewSpace = context->m_wind->GetViewSpace();
+    const sf::FloatRect viewSpace = context->wind_->GetViewSpace();
     if (viewSpace.left <= 0)
     {
-        m_view.setCenter(viewSpace.width / 2, m_view.getCenter().y);
-        context->m_wind->GetRenderWindow()->setView(m_view);
+        view_.setCenter(viewSpace.width / 2, view_.getCenter().y);
+        context->wind_->GetRenderWindow()->setView(view_);
     }
-    else if (viewSpace.left + viewSpace.width > (m_gameMap->GetMapSize().x + 1) * Tile_Size)
+    else if (viewSpace.left + viewSpace.width > (game_map_->GetMapSize().x + 1) * Tile_Size * 1.0f)
     {
-        m_view.setCenter(((m_gameMap->GetMapSize().x + 1) * Tile_Size) - (viewSpace.width / 2), m_view.getCenter().y);
-        context->m_wind->GetRenderWindow()->setView(m_view);
+        view_.setCenter(((game_map_->GetMapSize().x * 1.0f + 1) * Tile_Size) - (viewSpace.width / 2),
+                        view_.getCenter().y);
+        context->wind_->GetRenderWindow()->setView(view_);
     }
 
-    m_gameMap->Update(l_time.asSeconds());
-    m_stateMgr->GetContext()->m_entityManager->Update(l_time.asSeconds());
+    game_map_->Update(time.asSeconds());
+    state_mgr_->GetContext()->entity_mgr_->Update(time.asSeconds());
 }
 
 void State_Game::Draw()
 {
-    m_gameMap->Draw();
-    m_stateMgr->GetContext()->m_entityManager->Draw();
+    game_map_->Draw();
+    state_mgr_->GetContext()->entity_mgr_->Draw();
 }
 
-void State_Game::MainMenu(EventDetails* l_details)
+void State_Game::MainMenu(EventDetails* details)
 {
-    m_stateMgr->SwitchTo(StateType::MainMenu);
+    state_mgr_->SwitchTo(StateType::MainMenu);
 }
 
-void State_Game::Pause(EventDetails* l_details)
+void State_Game::Pause(EventDetails* details)
 {
-    m_stateMgr->SwitchTo(StateType::Paused);
+    state_mgr_->SwitchTo(StateType::Paused);
 }
 
 void State_Game::Activate()
@@ -99,7 +98,7 @@ void State_Game::Deactivate()
 }
 
 // Test/debug methods.
-void State_Game::ToggleOverlay(EventDetails* l_details)
+void State_Game::ToggleOverlay(EventDetails* details)
 {
-    m_stateMgr->GetContext()->m_debugOverlay.SetDebug(!m_stateMgr->GetContext()->m_debugOverlay.Debug());
+    state_mgr_->GetContext()->debug_overlay_.SetDebug(!state_mgr_->GetContext()->debug_overlay_.Debug());
 }

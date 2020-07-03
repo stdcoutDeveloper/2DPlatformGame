@@ -3,175 +3,197 @@
 #include "SharedContext.h"
 #include "Map.h"
 
-bool SortCollisions(const CollisionElement& l_1, const CollisionElement& l_2)
+bool SortCollisions(const CollisionElement& first, const CollisionElement& second)
 {
-    return l_1.m_area > l_2.m_area;
+    return first.area_ > second.area_;
 }
 
-EntityBase::EntityBase(EntityManager* l_entityMgr)
-    : m_name("BaseEntity"), m_type(EntityType::Base),
-      m_id(0), m_referenceTile(nullptr), m_state(EntityState::Idle),
-      m_collidingOnX(false), m_collidingOnY(false), m_entityManager(l_entityMgr)
-{
-}
-
-EntityBase::~EntityBase()
+EntityBase::EntityBase(EntityManager* entityMgr)
+    : name_("BaseEntity"), type_(EntityType::Base),
+      id_(0), reference_tile_(nullptr), state_(EntityState::Idle),
+      is_colliding_on_x_(false), is_colliding_on_y_(false), entity_mgr_(entityMgr)
 {
 }
 
-void EntityBase::SetPosition(float l_x, float l_y)
+EntityBase::~EntityBase() = default;
+
+void EntityBase::SetPosition(float x, float y)
 {
-    m_position = sf::Vector2f(l_x, l_y);
-    UpdateAABB();
+    position_ = sf::Vector2f(x, y);
+    UpdateBoundingBox();
 }
 
-void EntityBase::SetPosition(const sf::Vector2f& l_pos)
+void EntityBase::SetPosition(const sf::Vector2f& pos)
 {
-    m_position = l_pos;
-    UpdateAABB();
+    position_ = pos;
+    UpdateBoundingBox();
 }
 
-void EntityBase::SetSize(float l_x, float l_y)
+void EntityBase::SetSize(float x, float y)
 {
-    m_size = sf::Vector2f(l_x, l_y);
-    UpdateAABB();
+    bounding_box_size_ = sf::Vector2f(x, y);
+    UpdateBoundingBox();
 }
 
-void EntityBase::SetAcceleration(float l_x, float l_y)
+void EntityBase::SetAcceleration(float x, float y)
 {
-    m_acceleration = sf::Vector2f(l_x, l_y);
+    acceleration_ = sf::Vector2f(x, y);
 }
 
-void EntityBase::SetState(const EntityState& l_state)
+void EntityBase::SetState(const EntityState& state)
 {
-    if (m_state == EntityState::Dying) { return; }
-    m_state = l_state;
+    if (state_ == EntityState::Dying) { return; }
+    state_ = state;
 }
 
-const sf::Vector2f& EntityBase::GetSize() const { return m_size; }
-std::string EntityBase::GetName() const { return m_name; }
-EntityState EntityBase::GetState() const { return m_state; }
-unsigned int EntityBase::GetId() const { return m_id; }
-EntityType EntityBase::GetType() const { return m_type; }
-const sf::Vector2f& EntityBase::GetPosition() const { return m_position; }
-
-void EntityBase::Move(float l_x, float l_y)
+const sf::Vector2f& EntityBase::GetSize() const
 {
-    m_positionOld = m_position;
-    m_position += sf::Vector2f(l_x, l_y);
-    sf::Vector2u mapSize = m_entityManager->GetContext()->m_gameMap->GetMapSize();
-    if (m_position.x < 0)
+    return bounding_box_size_;
+}
+
+std::string EntityBase::GetName() const
+{
+    return name_;
+}
+
+EntityState EntityBase::GetState() const
+{
+    return state_;
+}
+
+unsigned int EntityBase::GetId() const
+{
+    return id_;
+}
+
+EntityType EntityBase::GetType() const
+{
+    return type_;
+}
+
+const sf::Vector2f& EntityBase::GetPosition() const
+{
+    return position_;
+}
+
+void EntityBase::Move(float x, float y)
+{
+    old_position_ = position_;
+    position_ += sf::Vector2f(x, y);
+    const sf::Vector2u mapSize = entity_mgr_->GetContext()->game_map_->GetMapSize();
+    if (position_.x < 0)
     {
-        m_position.x = 0;
+        position_.x = 0;
     }
-    else if (m_position.x > (mapSize.x + 1) * Tile_Size)
+    else if (position_.x > (mapSize.x + 1) * Tile_Size * 1.0f)
     {
-        m_position.x = (mapSize.x + 1) * Tile_Size;
+        position_.x = (mapSize.x + 1) * Tile_Size * 1.0f;
     }
 
-    if (m_position.y < 0)
+    if (position_.y < 0)
     {
-        m_position.y = 0;
+        position_.y = 0;
     }
-    else if (m_position.y > (mapSize.y + 1) * Tile_Size)
+    else if (position_.y > (mapSize.y + 1) * Tile_Size * 1.0f)
     {
-        m_position.y = (mapSize.y + 1) * Tile_Size;
+        position_.y = (mapSize.y + 1) * Tile_Size * 1.0f;
         SetState(EntityState::Dying);
     }
 
-    UpdateAABB();
+    UpdateBoundingBox();
 }
 
-void EntityBase::AddVelocity(float l_x, float l_y)
+void EntityBase::AddVelocity(float x, float y)
 {
-    m_velocity += sf::Vector2f(l_x, l_y);
-    if (abs(m_velocity.x) > m_maxVelocity.x)
+    velocity_ += sf::Vector2f(x, y);
+    if (abs(velocity_.x) > max_velocity_.x)
     {
-        if (m_velocity.x < 0) { m_velocity.x = -m_maxVelocity.x; }
-        else { m_velocity.x = m_maxVelocity.x; }
+        if (velocity_.x < 0) { velocity_.x = -max_velocity_.x; }
+        else { velocity_.x = max_velocity_.x; }
     }
 
-    if (abs(m_velocity.y) > m_maxVelocity.y)
+    if (abs(velocity_.y) > max_velocity_.y)
     {
-        if (m_velocity.y < 0) { m_velocity.y = -m_maxVelocity.y; }
-        else { m_velocity.y = m_maxVelocity.y; }
+        if (velocity_.y < 0) { velocity_.y = -max_velocity_.y; }
+        else { velocity_.y = max_velocity_.y; }
     }
 }
 
-void EntityBase::Accelerate(float l_x, float l_y)
+void EntityBase::Accelerate(float x, float y)
 {
-    m_acceleration += sf::Vector2f(l_x, l_y);
+    acceleration_ += sf::Vector2f(x, y);
 }
 
-void EntityBase::ApplyFriction(float l_x, float l_y)
+void EntityBase::ApplyFriction(float x, float y)
 {
-    if (m_velocity.x != 0)
+    if (velocity_.x != 0)
     {
-        if (abs(m_velocity.x) - abs(l_x) < 0) { m_velocity.x = 0; }
+        if (abs(velocity_.x) - abs(x) < 0) { velocity_.x = 0; }
         else
         {
-            if (m_velocity.x < 0) { m_velocity.x += l_x; }
-            else { m_velocity.x -= l_x; }
+            if (velocity_.x < 0) { velocity_.x += x; }
+            else { velocity_.x -= x; }
         }
     }
 
-    if (m_velocity.y != 0)
+    if (velocity_.y != 0)
     {
-        if (abs(m_velocity.y) - abs(l_y) < 0) { m_velocity.y = 0; }
+        if (abs(velocity_.y) - abs(y) < 0) { velocity_.y = 0; }
         else
         {
-            if (m_velocity.y < 0) { m_velocity.y += l_y; }
-            else { m_velocity.y -= l_y; }
+            if (velocity_.y < 0) { velocity_.y += y; }
+            else { velocity_.y -= y; }
         }
     }
 }
 
-void EntityBase::Update(float l_dT)
+void EntityBase::Update(float deltaTime)
 {
-    Map* map = m_entityManager->GetContext()->m_gameMap;
-    float gravity = map->GetGravity();
+    Map* map = entity_mgr_->GetContext()->game_map_;
+    const float gravity = map->GetGravity();
     Accelerate(0, gravity);
-    AddVelocity(m_acceleration.x * l_dT, m_acceleration.y * l_dT);
+    AddVelocity(acceleration_.x * deltaTime, acceleration_.y * deltaTime);
     SetAcceleration(0.0f, 0.0f);
     sf::Vector2f frictionValue;
-    if (m_referenceTile)
+    if (reference_tile_)
     {
-        frictionValue = m_referenceTile->m_friction;
-        if (m_referenceTile->m_deadly) { SetState(EntityState::Dying); }
+        frictionValue = reference_tile_->friction_;
+        if (reference_tile_->is_deadly_) { SetState(EntityState::Dying); }
     }
     else if (map->GetDefaultTile())
     {
-        frictionValue = map->GetDefaultTile()->m_friction;
+        frictionValue = map->GetDefaultTile()->friction_;
     }
     else
     {
-        frictionValue = m_friction;
+        frictionValue = friction_;
     }
 
-    float friction_x = (m_speed.x * frictionValue.x) * l_dT;
-    float friction_y = (m_speed.y * frictionValue.y) * l_dT;
+    const float friction_x = (speed_.x * frictionValue.x) * deltaTime;
+    const float friction_y = (speed_.y * frictionValue.y) * deltaTime;
     ApplyFriction(friction_x, friction_y);
-    sf::Vector2f deltaPos = m_velocity * l_dT;
+    const sf::Vector2f deltaPos = velocity_ * deltaTime;
     Move(deltaPos.x, deltaPos.y);
-    m_collidingOnX = false;
-    m_collidingOnY = false;
+    is_colliding_on_x_ = false;
+    is_colliding_on_y_ = false;
     CheckCollisions();
     ResolveCollisions();
 }
 
-void EntityBase::UpdateAABB()
+void EntityBase::UpdateBoundingBox()
 {
-    m_AABB = sf::FloatRect(m_position.x - (m_size.x / 2), m_position.y - m_size.y, m_size.x, m_size.y);
+    bounding_box_ = sf::FloatRect(position_.x - (bounding_box_size_.x / 2), position_.y - bounding_box_size_.y,
+                                  bounding_box_size_.x, bounding_box_size_.y);
 }
 
 void EntityBase::CheckCollisions()
 {
-    Map* gameMap = m_entityManager->GetContext()->m_gameMap;
-    unsigned int tileSize = gameMap->GetTileSize();
-    int fromX = floor(m_AABB.left / tileSize);
-    int toX = floor((m_AABB.left + m_AABB.width) / tileSize);
-    int fromY = floor(m_AABB.top / tileSize);
-    int toY = floor((m_AABB.top + m_AABB.height) / tileSize);
+    Map* gameMap = entity_mgr_->GetContext()->game_map_;
+    const unsigned int tileSize = gameMap->GetTileSize();
+    const int fromX = static_cast<int>(floor(bounding_box_.left / tileSize));
+    const int toX = static_cast<int>(floor((bounding_box_.left + bounding_box_.width) / tileSize));
+    const int fromY = static_cast<int>(floor(bounding_box_.top / tileSize));
+    const int toY = static_cast<int>(floor((bounding_box_.top + bounding_box_.height) / tileSize));
 
     for (int x = fromX; x <= toX; ++x)
     {
@@ -179,14 +201,14 @@ void EntityBase::CheckCollisions()
         {
             Tile* tile = gameMap->GetTile(x, y);
             if (!tile) { continue; }
-            sf::FloatRect tileBounds(x * tileSize, y * tileSize, tileSize, tileSize);
+            sf::FloatRect tileBounds(x * tileSize * 1.0f, y * tileSize * 1.0f, tileSize * 1.0f, tileSize * 1.0f);
             sf::FloatRect intersection;
-            m_AABB.intersects(tileBounds, intersection);
-            float area = intersection.width * intersection.height;
+            bounding_box_.intersects(tileBounds, intersection);
+            const float area = intersection.width * intersection.height;
 
-            CollisionElement e(area, tile->m_properties, tileBounds);
-            m_collisions.emplace_back(e);
-            if (tile->m_warp && m_type == EntityType::Player)
+            CollisionElement e(area, tile->properties_, tileBounds);
+            collisions_.emplace_back(e);
+            if (tile->is_warp_ && type_ == EntityType::Player)
             {
                 gameMap->LoadNext();
             }
@@ -196,59 +218,65 @@ void EntityBase::CheckCollisions()
 
 void EntityBase::ResolveCollisions()
 {
-    if (!m_collisions.empty())
+    if (!collisions_.empty())
     {
-        std::sort(m_collisions.begin(), m_collisions.end(), SortCollisions);
-        Map* gameMap = m_entityManager->GetContext()->m_gameMap;
-        unsigned int tileSize = gameMap->GetTileSize();
-        for (auto& itr : m_collisions)
+        std::sort(collisions_.begin(), collisions_.end(), SortCollisions);
+        Map* gameMap = entity_mgr_->GetContext()->game_map_;
+        const unsigned int tileSize = gameMap->GetTileSize();
+        for (auto& itr : collisions_)
         {
-            if (!m_AABB.intersects(itr.m_tileBounds)) { continue; }
+            if (!bounding_box_.intersects(itr.tile_bounds_)) { continue; }
             // Debug
-            if (m_entityManager->GetContext()->m_debugOverlay.Debug())
+            if (entity_mgr_->GetContext()->debug_overlay_.Debug())
             {
-                sf::Vector2f tempPos(itr.m_tileBounds.left, itr.m_tileBounds.top);
-                sf::RectangleShape* rect = new sf::RectangleShape(sf::Vector2f(tileSize, tileSize));
+                sf::Vector2f tempPos(itr.tile_bounds_.left, itr.tile_bounds_.top);
+                auto rect = new sf::RectangleShape(sf::Vector2f(tileSize * 1.0f, tileSize * 1.0f));
                 rect->setPosition(tempPos);
                 rect->setFillColor(sf::Color(255, 255, 0, 150));
-                m_entityManager->GetContext()->m_debugOverlay.Add(rect);
+                entity_mgr_->GetContext()->debug_overlay_.Add(rect);
             }
             // End debug.
-            float xDiff = (m_AABB.left + (m_AABB.width / 2)) - (itr.m_tileBounds.left + (itr.m_tileBounds.width / 2));
-            float yDiff = (m_AABB.top + (m_AABB.height / 2)) - (itr.m_tileBounds.top + (itr.m_tileBounds.height / 2));
-            float resolve = 0;
+            const float xDiff = (bounding_box_.left + (bounding_box_.width / 2)) - (itr.tile_bounds_.left + (itr
+                                                                                                             .tile_bounds_
+                                                                                                             .width /
+                2));
+            const float yDiff = (bounding_box_.top + (bounding_box_.height / 2)) - (itr.tile_bounds_.top + (itr
+                                                                                                            .tile_bounds_
+                                                                                                            .height /
+                2));
+            float resolve = 0.0f;
             if (abs(xDiff) > abs(yDiff))
             {
                 if (xDiff > 0)
                 {
-                    resolve = (itr.m_tileBounds.left + tileSize) - m_AABB.left;
+                    resolve = (itr.tile_bounds_.left + tileSize * 1.0f) - bounding_box_.left;
                 }
                 else
                 {
-                    resolve = -((m_AABB.left + m_AABB.width) - itr.m_tileBounds.left);
+                    resolve = -((bounding_box_.left + bounding_box_.width) - itr.tile_bounds_.left);
                 }
                 Move(resolve, 0);
-                m_velocity.x = 0;
-                m_collidingOnX = true;
+                velocity_.x = 0;
+                is_colliding_on_x_ = true;
             }
             else
             {
                 if (yDiff > 0)
                 {
-                    resolve = (itr.m_tileBounds.top + tileSize) - m_AABB.top;
+                    resolve = (itr.tile_bounds_.top + tileSize * 1.0f) - bounding_box_.top;
                 }
                 else
                 {
-                    resolve = -((m_AABB.top + m_AABB.height) - itr.m_tileBounds.top);
+                    resolve = -((bounding_box_.top + bounding_box_.height) - itr.tile_bounds_.top);
                 }
                 Move(0, resolve);
-                m_velocity.y = 0;
-                if (m_collidingOnY) { continue; }
-                m_referenceTile = itr.m_tile;
-                m_collidingOnY = true;
+                velocity_.y = 0;
+                if (is_colliding_on_y_) { continue; }
+                reference_tile_ = itr.tile_;
+                is_colliding_on_y_ = true;
             }
         }
-        m_collisions.clear();
+        collisions_.clear();
     }
-    if (!m_collidingOnY) { m_referenceTile = nullptr; }
+    if (!is_colliding_on_y_) { reference_tile_ = nullptr; }
 }

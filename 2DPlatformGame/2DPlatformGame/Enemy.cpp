@@ -1,56 +1,54 @@
 #include "Enemy.h"
 
-Enemy::Enemy(EntityManager* l_entityMgr)
-    : Character(l_entityMgr), m_hasDestination(false)
+Enemy::Enemy(EntityManager* entityMgr)
+    : Character(entityMgr), is_has_destination_(false)
 {
-    m_type = EntityType::Enemy;
+    type_ = EntityType::Enemy;
 }
 
-Enemy::~Enemy()
-{
-}
+Enemy::~Enemy() = default;
 
-void Enemy::OnEntityCollision(EntityBase* l_collider, bool l_attack)
+void Enemy::OnEntityCollision(EntityBase* collider, bool attack)
 {
-    if (m_state == EntityState::Dying) { return; }
-    if (l_attack) { return; }
-    if (l_collider->GetType() != EntityType::Player) { return; }
-    Character* player = static_cast<Character*>(l_collider);
+    if (state_ == EntityState::Dying) { return; }
+    if (attack) { return; }
+    if (collider->GetType() != EntityType::Player) { return; }
+    auto player = dynamic_cast<Character*>(collider);
     SetState(EntityState::Attacking);
     player->GetHurt(1);
-    if (m_position.x > player->GetPosition().x)
+    if (position_.x > player->GetPosition().x)
     {
-        player->AddVelocity(-m_speed.x, 0);
-        m_spriteSheet.SetDirection(Direction::Left);
+        player->AddVelocity(-speed_.x, 0);
+        sprite_sheet_.SetDirection(Direction::Left);
     }
     else
     {
-        player->AddVelocity(m_speed.y, 0);
-        m_spriteSheet.SetDirection(Direction::Right);
+        player->AddVelocity(speed_.y, 0);
+        sprite_sheet_.SetDirection(Direction::Right);
     }
 }
 
-void Enemy::Update(float l_dT)
+void Enemy::Update(float deltaTime)
 {
-    Character::Update(l_dT);
+    Character::Update(deltaTime);
 
-    if (m_hasDestination)
+    if (is_has_destination_)
     {
-        if (abs(m_destination.x - m_position.x) < 16)
+        if (abs(destination_.x - position_.x) < 16)
         {
-            m_hasDestination = false;
+            is_has_destination_ = false;
             return;
         }
-        if (m_destination.x - m_position.x > 0) { Move(Direction::Right); }
+        if (destination_.x - position_.x > 0) { Move(Direction::Right); }
         else { Move(Direction::Left); }
-        if (m_collidingOnX) { m_hasDestination = false; }
+        if (is_colliding_on_x_) { is_has_destination_ = false; }
         return;
     }
-    int random = rand() % 1000 + 1;
+    const int random = rand() % 1000 + 1;
     if (random != 1000) { return; }
     int newX = rand() % 65 + 0;
     if (rand() % 2) { newX = -newX; }
-    m_destination.x = m_position.x + newX;
-    if (m_destination.x < 0) { m_destination.x = 0; }
-    m_hasDestination = true;
+    destination_.x = position_.x + newX * 1.0f;
+    if (destination_.x < 0) { destination_.x = 0; }
+    is_has_destination_ = true;
 }

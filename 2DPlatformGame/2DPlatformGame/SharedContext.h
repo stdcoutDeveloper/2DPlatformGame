@@ -1,27 +1,28 @@
 #pragma once
+
 #include "Window.h"
 #include "EventManager.h"
 #include "TextureManager.h"
 #include "EntityManager.h"
 #include "DebugOverlay.h"
 
-class Map;
+class Map; // forward declaration
 
 struct SharedContext
 {
     SharedContext() :
-        m_wind(nullptr),
-        m_eventManager(nullptr),
-        m_textureManager(nullptr),
-        m_entityManager(nullptr),
-        m_gameMap(nullptr)
+        wind_(nullptr),
+        event_mgr_(nullptr),
+        texture_mgr_(nullptr),
+        entity_mgr_(nullptr),
+        game_map_(nullptr)
     {
     }
 
-    Window* m_wind;
-    EventManager* m_eventManager;
-    TextureManager* m_textureManager;
-    EntityManager* m_entityManager;
-    Map* m_gameMap;
-    DebugOverlay m_debugOverlay;
+    Window* wind_;
+    EventManager* event_mgr_;
+    TextureManager* texture_mgr_;
+    EntityManager* entity_mgr_;
+    Map* game_map_;
+    DebugOverlay debug_overlay_;
 };

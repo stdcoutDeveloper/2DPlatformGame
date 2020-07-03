@@ -74,9 +74,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Anim_Base.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Anim_Directional.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -147,6 +144,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Window.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Anim_Base.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

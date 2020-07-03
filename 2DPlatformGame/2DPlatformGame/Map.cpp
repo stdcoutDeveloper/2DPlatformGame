@@ -1,12 +1,12 @@
 #include "Map.h"
 #include "StateManager.h"
 
-Map::Map(SharedContext* l_context, BaseState* l_currentState)
-    : m_defaultTile(l_context), m_maxMapSize(32, 32), m_tileCount(0),
-      m_tileSetCount(0), m_mapGravity(512.f), m_loadNextMap(false), m_currentState(l_currentState),
-      m_context(l_context)
+Map::Map(SharedContext* context, BaseState* currentState)
+    : default_tile_(context), max_map_size_(32, 32), tile_count_(0),
+      tile_set_count_(0), map_gravity_(512.f), is_load_next_map_(false), current_state_(currentState),
+      context_(context)
 {
-    m_context->m_gameMap = this;
+    context_->game_map_ = this;
     LoadTiles("tiles.cfg");
 }
 
@@ -14,33 +14,33 @@ Map::~Map()
 {
     PurgeMap();
     PurgeTileSet();
-    m_context->m_gameMap = nullptr;
+    context_->game_map_ = nullptr;
 }
 
-Tile* Map::GetTile(unsigned int l_x, unsigned int l_y)
+Tile* Map::GetTile(unsigned int x, unsigned int y)
 {
-    auto itr = m_tileMap.find(ConvertCoords(l_x, l_y));
-    return (itr != m_tileMap.end() ? itr->second : nullptr);
+    const auto itr = tile_map_.find(ConvertCoordinates(x, y));
+    return (itr != tile_map_.end() ? itr->second : nullptr);
 }
 
-TileInfo* Map::GetDefaultTile() { return &m_defaultTile; }
-float Map::GetGravity() const { return m_mapGravity; }
+TileInfo* Map::GetDefaultTile() { return &default_tile_; }
+float Map::GetGravity() const { return map_gravity_; }
 unsigned int Map::GetTileSize() const { return Tile_Size; }
-const sf::Vector2u& Map::GetMapSize() const { return m_maxMapSize; }
-const sf::Vector2f& Map::GetPlayerStart() const { return m_playerStart; }
+const sf::Vector2u& Map::GetMapSize() const { return max_map_size_; }
+const sf::Vector2f& Map::GetPlayerStart() const { return player_start_; }
 
-void Map::LoadMap(const std::string& l_path)
+void Map::LoadMap(const std::string& path)
 {
     std::ifstream mapFile;
-    mapFile.open(Utils::GetWorkingDirectory() + l_path);
+    mapFile.open(Utils::GetWorkingDirectory() + path);
     if (!mapFile.is_open())
     {
-        std::cout << "! Failed loading map file: " << l_path << std::endl;
+        std::cout << "! Failed loading map file: " << path << std::endl;
         return;
     }
-    EntityManager* entityMgr = m_context->m_entityManager;
+    EntityManager* entityMgr = context_->entity_mgr_;
     std::string line;
-    std::cout << "--- Loading a map: " << l_path << std::endl;
+    std::cout << "--- Loading a map: " << path << std::endl;
 
     int playerId = -1;
     while (std::getline(mapFile, line))
@@ -58,23 +58,24 @@ void Map::LoadMap(const std::string& l_path)
                 std::cout << "! Bad tile id: " << tileId << std::endl;
                 continue;
             }
-            auto itr = m_tileSet.find(tileId);
-            if (itr == m_tileSet.end())
+            auto itr = tile_set_.find(tileId);
+            if (itr == tile_set_.end())
             {
                 std::cout << "! Tile id(" << tileId << ") was not found in tileset." << std::endl;
                 continue;
             }
             sf::Vector2i tileCoords;
             keystream >> tileCoords.x >> tileCoords.y;
-            if (tileCoords.x > m_maxMapSize.x || tileCoords.y > m_maxMapSize.y)
+            if (static_cast<unsigned int>(tileCoords.x) > max_map_size_.x || static_cast<unsigned int>(tileCoords.y) >
+                max_map_size_.y)
             {
                 std::cout << "! Tile is out of range: " << tileCoords.x << " " << tileCoords.y << std::endl;
                 continue;
             }
             Tile* tile = new Tile();
             // Bind properties of a tile from a set.
-            tile->m_properties = itr->second;
-            if (!m_tileMap.emplace(ConvertCoords(tileCoords.x, tileCoords.y), tile).second)
+            tile->properties_ = itr->second;
+            if (!tile_map_.emplace(ConvertCoordinates(tileCoords.x, tileCoords.y), tile).second)
             {
                 // Duplicate tile detected!
                 std::cout << "! Duplicate tile! : " << tileCoords.x
@@ -85,42 +86,42 @@ void Map::LoadMap(const std::string& l_path)
             }
             std::string warp;
             keystream >> warp;
-            tile->m_warp = false;
-            if (warp == "WARP") { tile->m_warp = true; }
+            tile->is_warp_ = false;
+            if (warp == "WARP") { tile->is_warp_ = true; }
         }
         else if (type == "BACKGROUND")
         {
-            if (m_backgroundTexture != "") { continue; }
-            keystream >> m_backgroundTexture;
-            if (!m_context->m_textureManager->RequireResource(m_backgroundTexture))
+            if (!background_texture_.empty()) { continue; }
+            keystream >> background_texture_;
+            if (!context_->texture_mgr_->RequireResource(background_texture_))
             {
-                m_backgroundTexture = "";
+                background_texture_ = "";
                 continue;
             }
-            sf::Texture* texture = m_context->m_textureManager->GetResource(m_backgroundTexture);
-            m_background.setTexture(*texture);
-            sf::Vector2f viewSize = m_currentState->GetView().getSize();
+            sf::Texture* texture = context_->texture_mgr_->GetResource(background_texture_);
+            background_.setTexture(*texture);
+            sf::Vector2f viewSize = current_state_->GetView().getSize();
             sf::Vector2u textureSize = texture->getSize();
             sf::Vector2f scaleFactors;
             scaleFactors.x = viewSize.x / textureSize.x;
             scaleFactors.y = viewSize.y / textureSize.y;
-            m_background.setScale(scaleFactors);
+            background_.setScale(scaleFactors);
         }
         else if (type == "SIZE")
         {
-            keystream >> m_maxMapSize.x >> m_maxMapSize.y;
+            keystream >> max_map_size_.x >> max_map_size_.y;
         }
         else if (type == "GRAVITY")
         {
-            keystream >> m_mapGravity;
+            keystream >> map_gravity_;
         }
         else if (type == "DEFAULT_FRICTION")
         {
-            keystream >> m_defaultTile.m_friction.x >> m_defaultTile.m_friction.y;
+            keystream >> default_tile_.friction_.x >> default_tile_.friction_.y;
         }
         else if (type == "NEXTMAP")
         {
-            keystream >> m_nextMap;
+            keystream >> next_map_;
         }
         else if (type == "PLAYER")
         {
@@ -132,7 +133,7 @@ void Map::LoadMap(const std::string& l_path)
             float playerY = 0;
             keystream >> playerX >> playerY;
             entityMgr->Find(playerId)->SetPosition(playerX, playerY);
-            m_playerStart = sf::Vector2f(playerX, playerY);
+            player_start_ = sf::Vector2f(playerX, playerY);
         }
         else if (type == "ENEMY")
         {
@@ -155,15 +156,18 @@ void Map::LoadMap(const std::string& l_path)
     std::cout << "--- Map Loaded! ---" << std::endl;
 }
 
-void Map::LoadNext() { m_loadNextMap = true; }
+void Map::LoadNext()
+{
+    is_load_next_map_ = true;
+}
 
-void Map::LoadTiles(const std::string& l_path)
+void Map::LoadTiles(const std::string& path)
 {
     std::ifstream file;
-    file.open(Utils::GetWorkingDirectory() + l_path);
+    file.open(Utils::GetWorkingDirectory() + path);
     if (!file.is_open())
     {
-        std::cout << "! Failed loading tile set file: " << l_path << std::endl;
+        std::cout << "! Failed loading tile set file: " << path << std::endl;
         return;
     }
     std::string line;
@@ -174,47 +178,48 @@ void Map::LoadTiles(const std::string& l_path)
         int tileId;
         keystream >> tileId;
         if (tileId < 0) { continue; }
-        TileInfo* tile = new TileInfo(m_context, "TileSheet", tileId);
-        keystream >> tile->m_name >> tile->m_friction.x >> tile->m_friction.y >> tile->m_deadly;
-        if (!m_tileSet.emplace(tileId, tile).second)
+        auto tile = new TileInfo(context_, "TileSheet", tileId);
+        keystream >> tile->name_ >> tile->friction_.x >> tile->friction_.y >> tile->is_deadly_;
+        if (!tile_set_.emplace(tileId, tile).second)
         {
             // Duplicate tile detected!
-            std::cout << "! Duplicate tile type: " << tile->m_name << std::endl;
+            std::cout << "! Duplicate tile type: " << tile->name_ << std::endl;
             delete tile;
         }
     }
     file.close();
 }
 
-void Map::Update(float l_dT)
+void Map::Update(float deltaTime)
 {
-    if (m_loadNextMap)
+    if (is_load_next_map_)
     {
         PurgeMap();
-        m_loadNextMap = false;
-        if (m_nextMap != "")
+        is_load_next_map_ = false;
+        if (!next_map_.empty())
         {
-            LoadMap("media/maps/" + m_nextMap);
+            LoadMap("media/maps/" + next_map_);
         }
         else
         {
-            m_currentState->GetStateManager()->SwitchTo(StateType::GameOver);
+            current_state_->GetStateManager()->SwitchTo(StateType::GameOver);
         }
-        m_nextMap = "";
+        next_map_ = "";
     }
-    sf::FloatRect viewSpace = m_context->m_wind->GetViewSpace();
-    m_background.setPosition(viewSpace.left, viewSpace.top);
+    const sf::FloatRect viewSpace = context_->wind_->GetViewSpace();
+    background_.setPosition(viewSpace.left, viewSpace.top);
 }
 
 void Map::Draw()
 {
-    sf::RenderWindow* l_wind = m_context->m_wind->GetRenderWindow();
-    l_wind->draw(m_background);
-    sf::FloatRect viewSpace = m_context->m_wind->GetViewSpace();
+    sf::RenderWindow* l_wind = context_->wind_->GetRenderWindow();
+    l_wind->draw(background_);
+    const sf::FloatRect viewSpace = context_->wind_->GetViewSpace();
 
-    sf::Vector2i tileBegin(floor(viewSpace.left / Tile_Size), floor(viewSpace.top / Tile_Size));
-    sf::Vector2i tileEnd(ceil((viewSpace.left + viewSpace.width) / Tile_Size),
-                         ceil((viewSpace.top + viewSpace.height) / Tile_Size));
+    const sf::Vector2i tileBegin(static_cast<int>(floor(viewSpace.left / Tile_Size)),
+                                 static_cast<int>(floor(viewSpace.top / Tile_Size)));
+    const sf::Vector2i tileEnd(static_cast<int>(ceil((viewSpace.left + viewSpace.width) / Tile_Size)),
+                               static_cast<int>(ceil((viewSpace.top + viewSpace.height) / Tile_Size)));
 
     unsigned int count = 0;
     for (int x = tileBegin.x; x <= tileEnd.x; ++x)
@@ -224,28 +229,28 @@ void Map::Draw()
             if (x < 0 || y < 0) { continue; }
             Tile* tile = GetTile(x, y);
             if (!tile) { continue; }
-            sf::Sprite& sprite = tile->m_properties->m_sprite;
-            sprite.setPosition(x * Tile_Size, y * Tile_Size);
+            sf::Sprite& sprite = tile->properties_->sprite_;
+            sprite.setPosition(x * Tile_Size * 1.0f, y * Tile_Size * 1.0f);
             l_wind->draw(sprite);
             ++count;
 
             // Debug.
-            if (m_context->m_debugOverlay.Debug())
+            if (context_->debug_overlay_.Debug())
             {
-                if (tile->m_properties->m_deadly || tile->m_warp)
+                if (tile->properties_->is_deadly_ || tile->is_warp_)
                 {
-                    sf::RectangleShape* tileMarker = new sf::RectangleShape(
+                    auto tileMarker = new sf::RectangleShape(
                         sf::Vector2f(Tile_Size, Tile_Size));
-                    tileMarker->setPosition(x * Tile_Size, y * Tile_Size);
-                    if (tile->m_properties->m_deadly)
+                    tileMarker->setPosition(x * Tile_Size * 1.0f, y * Tile_Size * 1.0f);
+                    if (tile->properties_->is_deadly_)
                     {
                         tileMarker->setFillColor(sf::Color(255, 0, 0, 100));
                     }
-                    else if (tile->m_warp)
+                    else if (tile->is_warp_)
                     {
                         tileMarker->setFillColor(sf::Color(0, 255, 0, 150));
                     }
-                    m_context->m_debugOverlay.Add(tileMarker);
+                    context_->debug_overlay_.Add(tileMarker);
                 }
             }
             // End debug.
@@ -253,32 +258,32 @@ void Map::Draw()
     }
 }
 
-unsigned int Map::ConvertCoords(unsigned int l_x, unsigned int l_y)
+unsigned int Map::ConvertCoordinates(unsigned int x, unsigned int y) const
 {
-    return (l_x * m_maxMapSize.x) + l_y; // Row-major.
+    return (x * max_map_size_.x) + y; // Row-major.
 }
 
 void Map::PurgeMap()
 {
-    m_tileCount = 0;
-    for (auto& itr : m_tileMap)
+    tile_count_ = 0;
+    for (auto& itr : tile_map_)
     {
         delete itr.second;
     }
-    m_tileMap.clear();
-    m_context->m_entityManager->Purge();
+    tile_map_.clear();
+    context_->entity_mgr_->Purge();
 
-    if (m_backgroundTexture == "") { return; }
-    m_context->m_textureManager->ReleaseResource(m_backgroundTexture);
-    m_backgroundTexture = "";
+    if (background_texture_.empty()) { return; }
+    context_->texture_mgr_->ReleaseResource(background_texture_);
+    background_texture_ = "";
 }
 
 void Map::PurgeTileSet()
 {
-    for (auto& itr : m_tileSet)
+    for (auto& itr : tile_set_)
     {
         delete itr.second;
     }
-    m_tileSet.clear();
-    m_tileSetCount = 0;
+    tile_set_.clear();
+    tile_set_count_ = 0;
 }

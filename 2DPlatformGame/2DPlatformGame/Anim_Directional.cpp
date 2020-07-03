@@ -3,33 +3,34 @@
 
 void Anim_Directional::CropSprite()
 {
-    sf::IntRect rect(m_spriteSheet->GetSpriteSize().x * m_frameCurrent,
-                     m_spriteSheet->GetSpriteSize().y * (m_frameRow + static_cast<short>(m_spriteSheet->GetDirection())
-                     ),
-                     m_spriteSheet->GetSpriteSize().x, m_spriteSheet->GetSpriteSize().y);
-    m_spriteSheet->CropSprite(rect);
+    const sf::IntRect rect(sprite_sheet_->GetSpriteSize().x * current_frame_,
+                           sprite_sheet_->GetSpriteSize().y * (frame_row_ + static_cast<short>(sprite_sheet_->
+                                   GetDirection())
+                           ),
+                           sprite_sheet_->GetSpriteSize().x, sprite_sheet_->GetSpriteSize().y);
+    sprite_sheet_->CropSprite(rect);
 }
 
 void Anim_Directional::FrameStep()
 {
-    if (m_frameStart < m_frameEnd) { ++m_frameCurrent; }
-    else { --m_frameCurrent; }
+    if (start_frame_ < end_frame_) { ++current_frame_; }
+    else { --current_frame_; }
 
-    if ((m_frameStart < m_frameEnd && m_frameCurrent > m_frameEnd) ||
-        (m_frameStart > m_frameEnd && m_frameCurrent < m_frameEnd))
+    if ((start_frame_ < end_frame_ && current_frame_ > end_frame_) ||
+        (start_frame_ > end_frame_ && current_frame_ < end_frame_))
     {
-        if (m_loop)
+        if (is_loop_)
         {
-            m_frameCurrent = m_frameStart;
+            current_frame_ = start_frame_;
             return;
         }
-        m_frameCurrent = m_frameEnd;
+        current_frame_ = end_frame_;
         Pause();
     }
 }
 
 void Anim_Directional::ReadIn(std::stringstream& l_stream)
 {
-    l_stream >> m_frameStart >> m_frameEnd >> m_frameRow
-        >> m_frameTime >> m_frameActionStart >> m_frameActionEnd;
+    l_stream >> start_frame_ >> end_frame_ >> frame_row_
+        >> frame_time_ >> action_start_frame_ >> action_end_frame_;
 }

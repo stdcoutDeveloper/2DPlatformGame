@@ -1,72 +1,79 @@
 #pragma once
-#include <string>
-class SpriteSheet;
 
-using Frame = unsigned int;
+#include <string>
+
+class SpriteSheet; // forward declaration.
+
+typedef unsigned int Frame;
 
 class Anim_Base
 {
+private:
     friend class SpriteSheet;
+
 public:
     Anim_Base();
     virtual ~Anim_Base();
 
-    void SetSpriteSheet(SpriteSheet* l_sheet);
-    void SetFrame(Frame l_frame);
-    void SetStartFrame(Frame l_frame);
-    void SetEndFrame(Frame l_frame);
-    void SetFrameRow(Frame l_row);
-    void SetActionStart(Frame l_frame);
-    void SetActionEnd(Frame l_frame);
-    void SetFrameTime(float l_time);
-    void SetLooping(bool l_loop);
-    void SetName(const std::string& l_name);
+    void SetSpriteSheet(SpriteSheet* sheet);
+    void SetFrame(Frame frame);
+    void SetStartFrame(Frame frame);
+    void SetEndFrame(Frame frame);
+    void SetFrameRow(Frame row);
+    void SetActionStart(Frame frame);
+    void SetActionEnd(Frame frame);
+    void SetFrameTime(float time);
+    void SetLooping(bool loop);
+    void SetName(const std::string& name);
 
-    SpriteSheet* GetSpriteSheet();
-    Frame GetFrame();
-    Frame GetStartFrame();
-    Frame GetEndFrame();
-    Frame GetFrameRow();
-    int GetActionStart();
-    int GetActionEnd();
-    float GetFrameTime();
-    float GetElapsedTime();
-    bool IsLooping();
-    bool IsPlaying();
-    bool IsInAction();
-    std::string GetName();
+    SpriteSheet* GetSpriteSheet() const;
+    Frame GetFrame() const;
+    Frame GetStartFrame() const;
+    Frame GetEndFrame() const;
+    Frame GetFrameRow() const;
+    int GetActionStart() const;
+    int GetActionEnd() const;
+    float GetFrameTime() const;
+    float GetElapsedTime() const;
+    bool IsLooping() const;
+    bool IsPlaying() const;
+    bool IsInAction() const;
+    std::string GetName() const;
 
     void Play();
     void Pause();
     void Stop();
     void Reset();
 
-    virtual void Update(const float& l_dT);
+    virtual void Update(const float& deltaTime);
 
+	/**
+	 * \brief Overload operator >>
+	 */
     friend std::stringstream& operator >>(
-        std::stringstream& l_stream, Anim_Base& a)
+        std::stringstream& stream, Anim_Base& a)
     {
-        a.ReadIn(l_stream);
-        return l_stream;
+        a.ReadIn(stream);
+        return stream;
     }
 
 protected:
     virtual void FrameStep() = 0;
     virtual void CropSprite() = 0;
-    virtual void ReadIn(std::stringstream& l_stream) = 0;
+    virtual void ReadIn(std::stringstream& stream) = 0;
 
-    Frame m_frameCurrent;
-    Frame m_frameStart;
-    Frame m_frameEnd;
-    Frame m_frameRow;
-    int m_frameActionStart;
-    int m_frameActionEnd;
-    float m_frameTime;
-    float m_elapsedTime;
-    bool m_loop;
-    bool m_playing;
+    Frame current_frame_;
+    Frame start_frame_;
+    Frame end_frame_;
+    Frame frame_row_;
+    int action_start_frame_;
+    int action_end_frame_;
+    float frame_time_;
+    float elapsed_time_;
+    bool is_loop_;
+    bool is_playing_;
 
-    std::string m_name;
+    std::string name_;
 
-    SpriteSheet* m_spriteSheet;
+    SpriteSheet* sprite_sheet_;
 };

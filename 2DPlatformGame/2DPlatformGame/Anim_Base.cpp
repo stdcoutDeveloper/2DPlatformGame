@@ -1,76 +1,168 @@
 #include "Anim_Base.h"
 #include "SpriteSheet.h"
 
-Anim_Base::Anim_Base() : m_frameCurrent(0), m_frameStart(0), m_frameEnd(0),
-                         m_frameRow(0), m_frameActionStart(-1), m_frameActionEnd(-1), m_frameTime(0.f),
-                         m_elapsedTime(0.f), m_loop(false), m_playing(false)
+Anim_Base::Anim_Base() : current_frame_(0), start_frame_(0), end_frame_(0),
+                         frame_row_(0), action_start_frame_(-1), action_end_frame_(-1), frame_time_(0.0f),
+                         elapsed_time_(0.0f), is_loop_(false), is_playing_(false), sprite_sheet_(nullptr)
 {
 }
 
-Anim_Base::~Anim_Base()
+Anim_Base::~Anim_Base() = default;
+
+void Anim_Base::SetFrame(Frame frame)
 {
+    if ((frame >= start_frame_ && frame <= end_frame_) ||
+        (frame >= end_frame_ && frame <= start_frame_))
+        current_frame_ = frame;
 }
 
-void Anim_Base::SetFrame(Frame l_frame)
+bool Anim_Base::IsInAction() const
 {
-    if ((l_frame >= m_frameStart && l_frame <= m_frameEnd) ||
-        (l_frame >= m_frameEnd && l_frame <= m_frameStart))
-    {
-        m_frameCurrent = l_frame;
-    }
-}
+    if (action_start_frame_ == -1 || action_end_frame_ == -1)
+        return true;
 
-bool Anim_Base::IsInAction()
-{
-    if (m_frameActionStart == -1 || m_frameActionEnd == -1) { return true; }
-    return (m_frameCurrent >= m_frameActionStart && m_frameCurrent <= m_frameActionEnd);
+    return (current_frame_ >= static_cast<unsigned int>(action_start_frame_) && current_frame_ <= static_cast<unsigned
+        int>(action_end_frame_));
 }
 
 void Anim_Base::Reset()
 {
-    m_frameCurrent = m_frameStart;
-    m_elapsedTime = 0.0f;
+    current_frame_ = start_frame_;
+    elapsed_time_ = 0.0f;
     CropSprite();
 }
 
-void Anim_Base::Update(const float& l_dT)
+void Anim_Base::Update(const float& deltaTime)
 {
-    if (!m_playing) { return; }
-    m_elapsedTime += l_dT;
-    if (m_elapsedTime < m_frameTime) { return; }
+    if (!is_playing_)
+        return;
+
+    elapsed_time_ += deltaTime;
+    if (elapsed_time_ < frame_time_)
+        return;
+
     FrameStep();
     CropSprite();
-    m_elapsedTime = 0;
+    elapsed_time_ = 0;
 }
 
-void Anim_Base::SetSpriteSheet(SpriteSheet* l_sheet) { m_spriteSheet = l_sheet; }
-void Anim_Base::SetStartFrame(Frame l_frame) { m_frameStart = l_frame; }
-void Anim_Base::SetEndFrame(Frame l_frame) { m_frameEnd = l_frame; }
-void Anim_Base::SetFrameRow(Frame l_row) { m_frameRow = l_row; }
-void Anim_Base::SetActionStart(Frame l_frame) { m_frameActionStart = l_frame; }
-void Anim_Base::SetActionEnd(Frame l_frame) { m_frameActionEnd = l_frame; }
-void Anim_Base::SetFrameTime(float l_time) { m_frameTime = l_time; }
-void Anim_Base::SetLooping(bool l_loop) { m_loop = l_loop; }
-void Anim_Base::SetName(const std::string& l_name) { m_name = l_name; }
+void Anim_Base::SetSpriteSheet(SpriteSheet* sheet)
+{
+    sprite_sheet_ = sheet;
+}
 
-SpriteSheet* Anim_Base::GetSpriteSheet() { return m_spriteSheet; }
-Frame Anim_Base::GetFrame() { return m_frameCurrent; }
-Frame Anim_Base::GetStartFrame() { return m_frameStart; }
-Frame Anim_Base::GetEndFrame() { return m_frameEnd; }
-Frame Anim_Base::GetFrameRow() { return m_frameRow; }
-int Anim_Base::GetActionStart() { return m_frameActionStart; }
-int Anim_Base::GetActionEnd() { return m_frameActionEnd; }
-float Anim_Base::GetFrameTime() { return m_frameTime; }
-float Anim_Base::GetElapsedTime() { return m_elapsedTime; }
-std::string Anim_Base::GetName() { return m_name; }
-bool Anim_Base::IsLooping() { return m_loop; }
-bool Anim_Base::IsPlaying() { return m_playing; }
+void Anim_Base::SetStartFrame(Frame frame)
+{
+    start_frame_ = frame;
+}
 
-void Anim_Base::Play() { m_playing = true; }
-void Anim_Base::Pause() { m_playing = false; }
+void Anim_Base::SetEndFrame(Frame frame)
+{
+    end_frame_ = frame;
+}
+
+void Anim_Base::SetFrameRow(Frame row)
+{
+    frame_row_ = row;
+}
+
+void Anim_Base::SetActionStart(Frame frame)
+{
+    action_start_frame_ = frame;
+}
+
+void Anim_Base::SetActionEnd(Frame frame)
+{
+    action_end_frame_ = frame;
+}
+
+void Anim_Base::SetFrameTime(float time)
+{
+    frame_time_ = time;
+}
+
+void Anim_Base::SetLooping(bool loop)
+{
+    is_loop_ = loop;
+}
+
+void Anim_Base::SetName(const std::string& name)
+{
+    name_ = name;
+}
+
+SpriteSheet* Anim_Base::GetSpriteSheet() const
+{
+    return sprite_sheet_;
+}
+
+Frame Anim_Base::GetFrame() const
+{
+    return current_frame_;
+}
+
+Frame Anim_Base::GetStartFrame() const
+{
+    return start_frame_;
+}
+
+Frame Anim_Base::GetEndFrame() const
+{
+    return end_frame_;
+}
+
+Frame Anim_Base::GetFrameRow() const
+{
+    return frame_row_;
+}
+
+int Anim_Base::GetActionStart() const
+{
+    return action_start_frame_;
+}
+
+int Anim_Base::GetActionEnd() const
+{
+    return action_end_frame_;
+}
+
+float Anim_Base::GetFrameTime() const
+{
+    return frame_time_;
+}
+
+float Anim_Base::GetElapsedTime() const
+{
+    return elapsed_time_;
+}
+
+std::string Anim_Base::GetName() const
+{
+    return name_;
+}
+
+bool Anim_Base::IsLooping() const
+{
+    return is_loop_;
+}
+
+bool Anim_Base::IsPlaying() const
+{
+    return is_playing_;
+}
+
+void Anim_Base::Play()
+{
+    is_playing_ = true;
+}
+
+void Anim_Base::Pause()
+{
+    is_playing_ = false;
+}
 
 void Anim_Base::Stop()
 {
-    m_playing = false;
+    is_playing_ = false;
     Reset();
 }

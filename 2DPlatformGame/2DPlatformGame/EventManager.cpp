@@ -1,62 +1,65 @@
 #include "EventManager.h"
 
 EventManager::EventManager()
-    : m_currentState(StateType(0)), m_hasFocus(true)
+    : current_state_(StateType(0)), is_has_focus_(true)
 {
     LoadBindings();
 }
 
 EventManager::~EventManager()
 {
-    for (auto& itr : m_bindings)
+    for (auto& itr : bindings_)
     {
         delete itr.second;
     }
 }
 
-bool EventManager::AddBinding(Binding* l_binding)
+bool EventManager::AddBinding(Binding* binding)
 {
-    if (m_bindings.find(l_binding->m_name) != m_bindings.end())
+    if (bindings_.find(binding->name_) != bindings_.end())
         return false;
 
-    return m_bindings.emplace(l_binding->m_name, l_binding).second;
+    return bindings_.emplace(binding->name_, binding).second;
 }
 
-bool EventManager::RemoveBinding(std::string l_name)
+bool EventManager::RemoveBinding(const std::string& name)
 {
-    auto itr = m_bindings.find(l_name);
-    if (itr == m_bindings.end()) { return false; }
+    auto itr = bindings_.find(name);
+    if (itr == bindings_.end()) { return false; }
     delete itr->second;
-    m_bindings.erase(itr);
+    bindings_.erase(itr);
     return true;
 }
 
-void EventManager::SetCurrentState(StateType l_state)
+void EventManager::SetCurrentState(StateType state)
 {
-    m_currentState = l_state;
+    current_state_ = state;
 }
 
-void EventManager::SetFocus(const bool& l_focus) { m_hasFocus = l_focus; }
+void EventManager::SetFocus(const bool& focus)
+{
+    is_has_focus_ = focus;
+}
 
-void EventManager::HandleEvent(sf::Event& l_event)
+void EventManager::HandleEvent(sf::Event& event)
 {
     // Handling SFML events.
-    for (auto& b_itr : m_bindings)
+    for (auto& b_itr : bindings_)
     {
         Binding* bind = b_itr.second;
-        for (auto& e_itr : bind->m_events)
+        for (auto& e_itr : bind->events_)
         {
-            EventType sfmlEvent = static_cast<EventType>(l_event.type);
+            const auto sfmlEvent = static_cast<EventType>(event.type);
             if (e_itr.first != sfmlEvent) { continue; }
             if (sfmlEvent == EventType::KeyDown || sfmlEvent == EventType::KeyUp)
             {
-                if (e_itr.second.m_code == l_event.key.code)
+                if (e_itr.second.code_ == event.key.code)
                 {
                     // Matching event/keystroke.
                     // Increase count.
-                    if (bind->m_details.m_keyCode != -1)
+                    if (bind->details_.key_code_ != -1)
                     {
-                        bind->m_details.m_keyCode = e_itr.second.m_code;
+                        bind->details_.key_code_ = e_itr.second.code_;
                     }
                     ++(bind->c);
                     break;
@@ -64,15 +67,15 @@ void EventManager::HandleEvent(sf::Event& l_event)
             }
             else if (sfmlEvent == EventType::MButtonDown || sfmlEvent == EventType::MButtonUp)
             {
-                if (e_itr.second.m_code == l_event.mouseButton.button)
+                if (e_itr.second.code_ == event.mouseButton.button)
                 {
                     // Matching event/keystroke.
                     // Increase count.
-                    bind->m_details.m_mouse.x = l_event.mouseButton.x;
-                    bind->m_details.m_mouse.y = l_event.mouseButton.y;
-                    if (bind->m_details.m_keyCode != -1)
+                    bind->details_.mouse_.x = event.mouseButton.x;
+                    bind->details_.mouse_.y = event.mouseButton.y;
+                    if (bind->details_.key_code_ != -1)
                     {
-                        bind->m_details.m_keyCode = e_itr.second.m_code;
+                        bind->details_.key_code_ = e_itr.second.code_;
                     }
                     ++(bind->c);
                     break;
@@ -83,16 +86,16 @@ void EventManager::HandleEvent(sf::Event& l_event)
                 // No need for additional checking.
                 if (sfmlEvent == EventType::MouseWheel)
                 {
-                    bind->m_details.m_mouseWheelDelta = l_event.mouseWheel.delta;
+                    bind->details_.mouse_wheel_delta_ = event.mouseWheel.delta;
                 }
                 else if (sfmlEvent == EventType::WindowResized)
                 {
-                    bind->m_details.m_size.x = l_event.size.width;
-                    bind->m_details.m_size.y = l_event.size.height;
+                    bind->details_.size_.x = event.size.width;
+                    bind->details_.size_.y = event.size.height;
                 }
                 else if (sfmlEvent == EventType::TextEntered)
                 {
-                    bind->m_details.m_textEntered = l_event.text.unicode;
+                    bind->details_.text_entered_ = event.text.unicode;
                 }
                 ++(bind->c);
             }
@@ -102,30 +105,30 @@ void EventManager::HandleEvent(sf::Event& l_event)
 
 void EventManager::Update()
 {
-    if (!m_hasFocus) { return; }
-    for (auto& b_itr : m_bindings)
+    if (!is_has_focus_) { return; }
+    for (auto& b_itr : bindings_)
     {
         Binding* bind = b_itr.second;
-        for (auto& e_itr : bind->m_events)
+        for (auto& e_itr : bind->events_)
         {
             switch (e_itr.first)
             {
             case(EventType::Keyboard):
-                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key(e_itr.second.m_code)))
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key(e_itr.second.code_)))
                 {
-                    if (bind->m_details.m_keyCode != -1)
+                    if (bind->details_.key_code_ != -1)
                     {
-                        bind->m_details.m_keyCode = e_itr.second.m_code;
+                        bind->details_.key_code_ = e_itr.second.code_;
                     }
                     ++(bind->c);
                 }
                 break;
             case(EventType::Mouse):
-                if (sf::Mouse::isButtonPressed(sf::Mouse::Button(e_itr.second.m_code)))
+                if (sf::Mouse::isButtonPressed(sf::Mouse::Button(e_itr.second.code_)))
                 {
-                    if (bind->m_details.m_keyCode != -1)
+                    if (bind->details_.key_code_ != -1)
                     {
-                        bind->m_details.m_keyCode = e_itr.second.m_code;
+                        bind->details_.key_code_ = e_itr.second.code_;
                     }
                     ++(bind->c);
                 }
@@ -133,36 +136,39 @@ void EventManager::Update()
             case(EventType::Joystick):
                 // Up for expansion.
                 break;
+
+            default:
+                break;
             }
         }
 
-        if (bind->m_events.size() == bind->c)
+        if (static_cast<int>(bind->events_.size()) == bind->c)
         {
-            auto stateCallbacks = m_callbacks.find(m_currentState);
-            auto otherCallbacks = m_callbacks.find(StateType(0));
+            auto stateCallbacks = callbacks_.find(current_state_);
+            auto otherCallbacks = callbacks_.find(StateType(0));
 
-            if (stateCallbacks != m_callbacks.end())
+            if (stateCallbacks != callbacks_.end())
             {
-                auto callItr = stateCallbacks->second.find(bind->m_name);
+                auto callItr = stateCallbacks->second.find(bind->name_);
                 if (callItr != stateCallbacks->second.end())
                 {
                     // Pass in information about events.
-                    callItr->second(&bind->m_details);
+                    callItr->second(&bind->details_);
                 }
             }
 
-            if (otherCallbacks != m_callbacks.end())
+            if (otherCallbacks != callbacks_.end())
             {
-                auto callItr = otherCallbacks->second.find(bind->m_name);
+                auto callItr = otherCallbacks->second.find(bind->name_);
                 if (callItr != otherCallbacks->second.end())
                 {
                     // Pass in information about events.
-                    callItr->second(&bind->m_details);
+                    callItr->second(&bind->details_);
                 }
             }
         }
         bind->c = 0;
-        bind->m_details.Clear();
+        bind->details_.Clear();
     }
 }
 
@@ -183,14 +189,14 @@ void EventManager::LoadBindings()
         std::stringstream keystream(line);
         std::string callbackName;
         keystream >> callbackName;
-        Binding* bind = new Binding(callbackName);
+        auto bind = new Binding(callbackName);
         while (!keystream.eof())
         {
             std::string keyval;
             keystream >> keyval;
             int start = 0;
             int end = keyval.find(delimiter);
-            if (end == std::string::npos)
+            if (static_cast<size_t>(end) == std::string::npos)
             {
                 delete bind;
                 bind = nullptr;
@@ -201,7 +207,7 @@ void EventManager::LoadBindings()
                                           keyval.find(delimiter, end + delimiter.length())));
 
             EventInfo eventInfo;
-            eventInfo.m_code = code;
+            eventInfo.code_ = code;
             bind->BindEvent(type, eventInfo);
         }
 

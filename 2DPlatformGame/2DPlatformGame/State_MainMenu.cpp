@@ -1,31 +1,29 @@
 #include "State_MainMenu.h"
 #include "StateManager.h"
 
-State_MainMenu::State_MainMenu(StateManager* l_stateManager)
-    : BaseState(l_stateManager)
+State_MainMenu::State_MainMenu(StateManager* stateManager)
+    : BaseState(stateManager)
 {
 }
 
-State_MainMenu::~State_MainMenu()
-{
-}
+State_MainMenu::~State_MainMenu() = default;
 
 void State_MainMenu::OnCreate()
 {
-    m_font.loadFromFile(Utils::GetWorkingDirectory() + "media/Fonts/arial.ttf");
-    m_text.setFont(m_font);
-    m_text.setString(sf::String("MAIN MENU:"));
-    m_text.setCharacterSize(18);
+    font_.loadFromFile(Utils::GetWorkingDirectory() + "media/Fonts/arial.ttf");
+    text_.setFont(font_);
+    text_.setString(sf::String("MAIN MENU:"));
+    text_.setCharacterSize(18);
 
-    sf::FloatRect textRect = m_text.getLocalBounds();
-    m_text.setOrigin(textRect.left + textRect.width / 2.0f,
-                     textRect.top + textRect.height / 2.0f);
+    const sf::FloatRect textRect = text_.getLocalBounds();
+    text_.setOrigin(textRect.left + textRect.width / 2.0f,
+                    textRect.top + textRect.height / 2.0f);
 
-    m_text.setPosition(400, 100);
+    text_.setPosition(400, 100);
 
-    m_buttonSize = sf::Vector2f(300.0f, 32.0f);
-    m_buttonPos = sf::Vector2f(400, 200);
-    m_buttonPadding = 4; // 4px.
+    button_size_ = sf::Vector2f(300.0f, 32.0f);
+    button_pos_ = sf::Vector2f(400, 200);
+    button_padding_ = 4; // 4px.
 
     std::string str[3];
     str[0] = "PLAY";
@@ -35,73 +33,73 @@ void State_MainMenu::OnCreate()
     for (int i = 0; i < 3; ++i)
     {
         sf::Vector2f buttonPosition(
-            m_buttonPos.x, m_buttonPos.y +
-            (i * (m_buttonSize.y + m_buttonPadding)));
-        m_rects[i].setSize(m_buttonSize);
-        m_rects[i].setFillColor(sf::Color::Red);
+            button_pos_.x, button_pos_.y +
+            (i * 1.0f * (button_size_.y + button_padding_ * 1.0f)));
+        rects_[i].setSize(button_size_);
+        rects_[i].setFillColor(sf::Color::Red);
 
-        m_rects[i].setOrigin(
-            m_buttonSize.x / 2.0f, m_buttonSize.y / 2.0f);
-        m_rects[i].setPosition(buttonPosition);
+        rects_[i].setOrigin(
+            button_size_.x / 2.0f, button_size_.y / 2.0f);
+        rects_[i].setPosition(buttonPosition);
 
-        m_labels[i].setFont(m_font);
-        m_labels[i].setString(sf::String(str[i]));
-        m_labels[i].setCharacterSize(12);
+        labels_[i].setFont(font_);
+        labels_[i].setString(sf::String(str[i]));
+        labels_[i].setCharacterSize(12);
 
-        sf::FloatRect rect = m_labels[i].getLocalBounds();
-        m_labels[i].setOrigin(
+        const sf::FloatRect rect = labels_[i].getLocalBounds();
+        labels_[i].setOrigin(
             rect.left + rect.width / 2.0f,
             rect.top + rect.height / 2.0f);
 
-        m_labels[i].setPosition(buttonPosition);
+        labels_[i].setPosition(buttonPosition);
     }
 
-    EventManager* evMgr = m_stateMgr->
-                          GetContext()->m_eventManager;
+    EventManager* evMgr = state_mgr_->
+                          GetContext()->event_mgr_;
     evMgr->AddCallback(StateType::MainMenu, "Mouse_Left", &State_MainMenu::MouseClick, this);
 }
 
 void State_MainMenu::OnDestroy()
 {
-    EventManager* evMgr = m_stateMgr->
-                          GetContext()->m_eventManager;
+    EventManager* evMgr = state_mgr_->
+                          GetContext()->event_mgr_;
     evMgr->RemoveCallback(StateType::MainMenu, "Mouse_Left");
 }
 
 void State_MainMenu::Activate()
 {
-    if (m_stateMgr->HasState(StateType::Game)
-        && m_labels[0].getString() != "RESUME")
+    if (state_mgr_->HasState(StateType::Game)
+        && labels_[0].getString() != "RESUME")
     {
-        m_labels[0].setString(sf::String("RESUME"));
+        labels_[0].setString(sf::String("RESUME"));
     }
     else
     {
-        m_labels[0].setString(sf::String("PLAY"));
+        labels_[0].setString(sf::String("PLAY"));
     }
 
-    sf::FloatRect rect = m_labels[0].getLocalBounds();
-    m_labels[0].setOrigin(rect.left + rect.width / 2.0f,
-                          rect.top + rect.height / 2.0f);
+    const sf::FloatRect rect = labels_[0].getLocalBounds();
+    labels_[0].setOrigin(rect.left + rect.width / 2.0f,
+                         rect.top + rect.height / 2.0f);
 }
 
-void State_MainMenu::MouseClick(EventDetails* l_details)
+void State_MainMenu::MouseClick(EventDetails* details)
 {
-    SharedContext* context = m_stateMgr->GetContext();
-    sf::Vector2i mousePos = l_details->m_mouse;
+    //SharedContext* context = m_stateMgr->GetContext();
+    const sf::Vector2i mousePos = details->mouse_;
 
-    float halfX = m_buttonSize.x / 2.0f;
-    float halfY = m_buttonSize.y / 2.0f;
+    const float halfX = button_size_.x / 2.0f;
+    const float halfY = button_size_.y / 2.0f;
     for (int i = 0; i < 3; ++i)
     {
-        if (mousePos.x >= m_rects[i].getPosition().x - halfX &&
-            mousePos.x <= m_rects[i].getPosition().x + halfX &&
-            mousePos.y >= m_rects[i].getPosition().y - halfY &&
-            mousePos.y <= m_rects[i].getPosition().y + halfY)
+        if (mousePos.x >= rects_[i].getPosition().x - halfX &&
+            mousePos.x <= rects_[i].getPosition().x + halfX &&
+            mousePos.y >= rects_[i].getPosition().y - halfY &&
+            mousePos.y <= rects_[i].getPosition().y + halfY)
         {
             if (i == 0)
             {
-                m_stateMgr->SwitchTo(StateType::Game);
+                state_mgr_->SwitchTo(StateType::Game);
             }
             else if (i == 1)
             {
@@ -109,7 +107,7 @@ void State_MainMenu::MouseClick(EventDetails* l_details)
             }
             else if (i == 2)
             {
-                m_stateMgr->GetContext()->m_wind->Close();
+                state_mgr_->GetContext()->wind_->Close();
             }
         }
     }
@@ -117,17 +115,17 @@ void State_MainMenu::MouseClick(EventDetails* l_details)
 
 void State_MainMenu::Draw()
 {
-    sf::RenderWindow* window = m_stateMgr->
-                               GetContext()->m_wind->GetRenderWindow();
-    window->draw(m_text);
+    sf::RenderWindow* window = state_mgr_->
+                               GetContext()->wind_->GetRenderWindow();
+    window->draw(text_);
     for (int i = 0; i < 3; ++i)
     {
-        window->draw(m_rects[i]);
-        window->draw(m_labels[i]);
+        window->draw(rects_[i]);
+        window->draw(labels_[i]);
     }
 }
 
-void State_MainMenu::Update(const sf::Time& l_time)
+void State_MainMenu::Update(const sf::Time& time)
 {
 }
 

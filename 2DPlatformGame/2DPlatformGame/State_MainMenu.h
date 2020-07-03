@@ -1,11 +1,12 @@
 #pragma once
+
 #include "BaseState.h"
 #include "EventManager.h"
 
 class State_MainMenu : public BaseState
 {
 public:
-    State_MainMenu(StateManager* l_stateManager);
+    State_MainMenu(StateManager* stateManager);
     ~State_MainMenu();
 
     void OnCreate() override;
@@ -14,18 +15,19 @@ public:
     void Activate() override;
     void Deactivate() override;
 
-    void Update(const sf::Time& l_time) override;
+    void Update(const sf::Time& time) override;
     void Draw() override;
 
-    void MouseClick(EventDetails* l_details);
+    void MouseClick(EventDetails* details);
+
 private:
-    sf::Font m_font;
-    sf::Text m_text;
+    sf::Font font_;
+    sf::Text text_;
 
-    sf::Vector2f m_buttonSize;
-    sf::Vector2f m_buttonPos;
-    unsigned int m_buttonPadding;
+    sf::Vector2f button_size_;
+    sf::Vector2f button_pos_;
+    unsigned int button_padding_;
 
-    sf::RectangleShape m_rects[3];
-    sf::Text m_labels[3];
+    sf::RectangleShape rects_[3];
+    sf::Text labels_[3];
 };

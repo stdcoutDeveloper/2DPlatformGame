@@ -3,7 +3,7 @@
 
 #include "Game.h"
 
-void main(int argc, void** argv[])
+int main(int argc, const char* argv[])
 {
     // Program entry point.
     {
@@ -16,4 +16,6 @@ void main(int argc, void** argv[])
         }
     }
     system("PAUSE");
+
+    return EXIT_SUCCESS;
 }

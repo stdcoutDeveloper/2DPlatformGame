@@ -1,7 +1,7 @@
 #include "StateManager.h"
 
-StateManager::StateManager(SharedContext* l_shared)
-    : m_shared(l_shared)
+StateManager::StateManager(SharedContext* shared)
+    : shared_context_(shared)
 {
     RegisterState<State_Intro>(StateType::Intro);
     RegisterState<State_MainMenu>(StateType::MainMenu);
@@ -12,22 +12,22 @@ StateManager::StateManager(SharedContext* l_shared)
 
 StateManager::~StateManager()
 {
-    for (auto& itr : m_states)
+    for (auto& itr : states_)
     {
         itr.second->OnDestroy();
         delete itr.second;
     }
 }
 
-void StateManager::Update(const sf::Time& l_time)
+void StateManager::Update(const sf::Time& time)
 {
-    if (m_states.empty()) { return; }
-    if (m_states.back().second->IsTranscendent() && m_states.size() > 1)
+    if (states_.empty()) { return; }
+    if (states_.back().second->IsTranscendent() && states_.size() > 1)
     {
-        auto itr = m_states.end();
-        while (itr != m_states.begin())
+        auto itr = states_.end();
+        while (itr != states_.begin())
         {
-            if (itr != m_states.end())
+            if (itr != states_.end())
             {
                 if (!itr->second->IsTranscendent())
                 {
@@ -36,26 +36,26 @@ void StateManager::Update(const sf::Time& l_time)
             }
             --itr;
         }
-        for (; itr != m_states.end(); ++itr)
+        for (; itr != states_.end(); ++itr)
         {
-            itr->second->Update(l_time);
+            itr->second->Update(time);
         }
     }
     else
     {
-        m_states.back().second->Update(l_time);
+        states_.back().second->Update(time);
     }
 }
 
 void StateManager::Draw()
 {
-    if (m_states.empty()) { return; }
-    if (m_states.back().second->IsTransparent() && m_states.size() > 1)
+    if (states_.empty()) { return; }
+    if (states_.back().second->IsTransparent() && states_.size() > 1)
     {
-        auto itr = m_states.end();
-        while (itr != m_states.begin())
+        auto itr = states_.end();
+        while (itr != states_.begin())
         {
-            if (itr != m_states.end())
+            if (itr != states_.end())
             {
                 if (!itr->second->IsTransparent())
                 {
@@ -64,29 +64,31 @@ void StateManager::Draw()
             }
             --itr;
         }
-        for (; itr != m_states.end(); ++itr)
+        for (; itr != states_.end(); ++itr)
         {
-            m_shared->m_wind->GetRenderWindow()->setView(itr->second->GetView());
+            shared_context_->wind_->GetRenderWindow()->setView(itr->second->GetView());
             itr->second->Draw();
         }
     }
     else
     {
-        m_states.back().second->Draw();
+        states_.back().second->Draw();
     }
 }
 
-SharedContext* StateManager::GetContext() { return m_shared; }
-
-bool StateManager::HasState(const StateType& l_type)
+SharedContext* StateManager::GetContext() const
 {
-    for (auto itr = m_states.begin();
-         itr != m_states.end(); ++itr)
+    return shared_context_;
+}
+
+bool StateManager::HasState(const StateType& type)
+{
+    for (auto itr : states_)
     {
-        if (itr->first == l_type)
+        if (itr.first == type)
         {
-            auto removed = std::find(m_toRemove.begin(), m_toRemove.end(), l_type);
-            if (removed == m_toRemove.end()) { return true; }
+            const auto removed = std::find(type_to_remove_.begin(), type_to_remove_.end(), type);
+            if (removed == type_to_remove_.end()) { return true; }
             return false;
         }
     }
@@ -95,66 +97,66 @@ bool StateManager::HasState(const StateType& l_type)
 
 void StateManager::ProcessRequests()
 {
-    while (m_toRemove.begin() != m_toRemove.end())
+    while (type_to_remove_.begin() != type_to_remove_.end())
     {
-        RemoveState(*m_toRemove.begin());
-        m_toRemove.erase(m_toRemove.begin());
+        RemoveState(*type_to_remove_.begin());
+        type_to_remove_.erase(type_to_remove_.begin());
     }
 }
 
-void StateManager::SwitchTo(const StateType& l_type)
+void StateManager::SwitchTo(const StateType& type)
 {
-    m_shared->m_eventManager->SetCurrentState(l_type);
-    for (auto itr = m_states.begin();
-         itr != m_states.end(); ++itr)
+    shared_context_->event_mgr_->SetCurrentState(type);
+    for (auto itr = states_.begin();
+         itr != states_.end(); ++itr)
     {
-        if (itr->first == l_type)
+        if (itr->first == type)
         {
-            m_states.back().second->Deactivate();
+            states_.back().second->Deactivate();
             StateType tmp_type = itr->first;
             BaseState* tmp_state = itr->second;
-            m_states.erase(itr);
-            m_states.emplace_back(tmp_type, tmp_state);
+            states_.erase(itr);
+            states_.emplace_back(tmp_type, tmp_state);
             tmp_state->Activate();
-            m_shared->m_wind->GetRenderWindow()->setView(tmp_state->GetView());
+            shared_context_->wind_->GetRenderWindow()->setView(tmp_state->GetView());
             return;
         }
     }
 
     // State with l_type wasn't found.
-    if (!m_states.empty()) { m_states.back().second->Deactivate(); }
-    CreateState(l_type);
-    m_states.back().second->Activate();
-    m_shared->m_wind->GetRenderWindow()->setView(m_states.back().second->GetView());
+    if (!states_.empty()) { states_.back().second->Deactivate(); }
+    CreateState(type);
+    states_.back().second->Activate();
+    shared_context_->wind_->GetRenderWindow()->setView(states_.back().second->GetView());
 }
 
-void StateManager::Remove(const StateType& l_type)
+void StateManager::Remove(const StateType& type)
 {
-    m_toRemove.push_back(l_type);
+    type_to_remove_.push_back(type);
 }
 
 // Private methods.
 
-void StateManager::CreateState(const StateType& l_type)
+void StateManager::CreateState(const StateType& type)
 {
-    auto newState = m_stateFactory.find(l_type);
-    if (newState == m_stateFactory.end()) { return; }
+    const auto newState = state_factory_.find(type);
+    if (newState == state_factory_.end()) { return; }
     BaseState* state = newState->second();
-    state->m_view = m_shared->m_wind->GetRenderWindow()->getDefaultView();
-    m_states.emplace_back(l_type, state);
+    state->view_ = shared_context_->wind_->GetRenderWindow()->getDefaultView();
+    states_.emplace_back(type, state);
     state->OnCreate();
 }
 
-void StateManager::RemoveState(const StateType& l_type)
+void StateManager::RemoveState(const StateType& type)
 {
-    for (auto itr = m_states.begin();
-         itr != m_states.end(); ++itr)
+    for (auto itr = states_.begin();
+         itr != states_.end(); ++itr)
     {
-        if (itr->first == l_type)
+        if (itr->first == type)
         {
             itr->second->OnDestroy();
             delete itr->second;
-            m_states.erase(itr);
+            states_.erase(itr);
             return;
         }
     }
